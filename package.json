@@ -1,0 +1,13 @@
+{
+  "name": "masters-pool",
+  "private": true,
+  "scripts": {
+    "dev": "next dev"
+  },
+  "dependencies": {
+    "firebase": "^10.0.0",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  }
+}
