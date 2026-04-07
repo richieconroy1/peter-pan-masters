@@ -5,9 +5,9 @@ import { collection, addDoc, onSnapshot, query, where } from "firebase/firestore
 
 const salaryCap = 50000;
 
-// 12:00 AM Pacific Time, Thursday April 9, 2026 (midnight going into Thursday)
-// 00:00 PT = 07:00 UTC
-const LOCK_TIME = new Date("2026-04-09T07:00:00Z");
+// 12:00 AM Pacific Time, Thursday April 10, 2025
+// Using April 10 2025 00:00 PT = 07:00 UTC
+const LOCK_TIME = new Date("2026-04-10T07:00:00Z");
 
 export default function App() {
   const [players, setPlayers] = useState([]);
@@ -18,8 +18,6 @@ export default function App() {
   const [tickerPlayers, setTickerPlayers] = useState([]);
   const [copied, setCopied] = useState(false);
   const [now, setNow] = useState(new Date());
-  const [submitError, setSubmitError] = useState("");
-  const [submitSuccess, setSubmitSuccess] = useState(false);
   const [draftSaved, setDraftSaved] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
 
@@ -115,14 +113,11 @@ export default function App() {
       { name: "Jason Day", salary: 7600 },
       { name: "Cameron Smith", salary: 7500 },
       { name: "Sungjae Im", salary: 7500 },
-      { name: "Nicolai Hojgaard", salary: 7500 },
       { name: "Jacob Bridgeman", salary: 7400 },
-      { name: "Jake Knapp", salary: 7400 },
       { name: "Sam Burns", salary: 7400 },
       { name: "Harris English", salary: 7300 },
       { name: "Max Homa", salary: 7300 },
       { name: "Marco Penge", salary: 7300 },
-      { name: "Gary Woodland", salary: 7300 },
       { name: "Adam Scott", salary: 7200 },
       { name: "J.J. Spaun", salary: 7200 },
       { name: "Maverick McNealy", salary: 7200 },
@@ -132,8 +127,7 @@ export default function App() {
       { name: "Alex Noren", salary: 7000 },
       { name: "Dustin Johnson", salary: 7000 },
       { name: "Keegan Bradley", salary: 7000 },
-      { name: "Daniel Berger", salary: 7000 },
-      { name: "Tom McKibbin", salary: 6500 },
+      { name: "Tom McKibbin", salary: 6900 },
       { name: "Rasmus Hojgaard", salary: 6900 },
       { name: "Harry Hall", salary: 6900 },
       { name: "Kurt Kitayama", salary: 6800 },
@@ -265,19 +259,7 @@ export default function App() {
   const submitEntry = async () => {
     if (isLocked || lineup.length !== 6 || !name || !poolId) return;
     if (lineup.reduce((s, p) => s + p.salary, 0) > salaryCap) return;
-    setSubmitError("");
-
-    // Check for duplicate name in this pool
-    const duplicate = entries.find(
-      (e) => e.name.trim().toLowerCase() === name.trim().toLowerCase()
-    );
-    if (duplicate) {
-      setSubmitError(`An entry for "${name}" already exists. Each person can only submit one lineup.`);
-      return;
-    }
-
     await addDoc(collection(db, "entries"), { poolId, name, players: lineup });
-    setSubmitSuccess(true);
     clearDraft();
   };
 
@@ -345,12 +327,11 @@ export default function App() {
     : [{ pos: "–", name: "Awaiting live data...", score: null }];
 
   const sectionStyle = {
-    background: "linear-gradient(145deg, #163d2c, #0c2318)",
-    border: "1px solid rgba(212,175,55,0.15)",
+    background: "linear-gradient(145deg, #174f3a, #0f2e23)",
+    border: "1px solid rgba(255,255,255,0.12)",
     borderRadius: "8px",
     padding: "16px",
     marginBottom: "16px",
-    boxShadow: "0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)",
   };
   const tableStyle = { width: "100%", borderCollapse: "collapse", fontSize: "13px" };
   const thStyle = {
@@ -459,30 +440,7 @@ export default function App() {
           margin: 0;
         }
 
-        /* ── AUGUSTA TEXTURE OVERLAY ── */
-        .augusta-bg::before {
-          content: '';
-          position: fixed;
-          inset: 0;
-          pointer-events: none;
-          z-index: 0;
-          background-image:
-            repeating-linear-gradient(
-              0deg,
-              transparent,
-              transparent 3px,
-              rgba(0,0,0,0.04) 3px,
-              rgba(0,0,0,0.04) 4px
-            ),
-            repeating-linear-gradient(
-              90deg,
-              transparent,
-              transparent 8px,
-              rgba(255,255,255,0.012) 8px,
-              rgba(255,255,255,0.012) 9px
-            );
-        }
-        .augusta-bg > * { position: relative; z-index: 1; }
+        /* ── SHARE BUTTON ── */
         .share-btn {
           display: inline-flex; align-items: center; gap: 8px;
           background: rgba(0,0,0,0.3);
@@ -498,12 +456,11 @@ export default function App() {
 
         /* ── PLAYER PICKER ── */
         .picker-section {
-          background: linear-gradient(145deg, #163d2c, #0c2318);
-          border: 1px solid rgba(212,175,55,0.15);
+          background: linear-gradient(145deg, #174f3a, #0f2e23);
+          border: 1px solid rgba(255,255,255,0.12);
           border-radius: 8px;
           padding: 16px;
           margin-bottom: 16px;
-          box-shadow: 0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04);
         }
         .picker-header {
           display: flex;
@@ -543,7 +500,7 @@ export default function App() {
           cursor: pointer;
           transition: all 0.18s ease;
           font-family: 'Playfair Display', serif;
-          font-size: 15px;
+          font-size: 13px;
         }
         .player-row:hover:not(.player-row--locked):not(.player-row--selected) {
           background: rgba(255,255,255,0.07);
@@ -559,8 +516,8 @@ export default function App() {
         .player-row--selected .player-salary { color: #d4af37; }
         .player-row--full { opacity: 0.38; cursor: default; }
         .player-row--locked { cursor: not-allowed; opacity: 0.5; }
-        .player-name { color: #f5f0e0; font-style: italic; letter-spacing: 0.02em; font-size: 15px; }
-        .player-salary { color: #a8c4ae; font-size: 13px; font-style: normal; letter-spacing: 0.05em; }
+        .player-name { color: #ddd8c4; font-style: italic; letter-spacing: 0.02em; }
+        .player-salary { color: #8aab93; font-size: 12px; font-style: normal; letter-spacing: 0.05em; }
         .player-check {
           width: 16px; height: 16px; margin-right: 8px;
           border-radius: 50%; background: #d4af37;
@@ -621,17 +578,7 @@ export default function App() {
         .draft-btn.clear:hover { background: rgba(220,80,80,0.1); border-color: rgba(220,80,80,0.5); color: #e07070; }
       `}</style>
 
-      <div style={{
-        minHeight: "100vh",
-        background: [
-          "radial-gradient(ellipse at 20% 0%, rgba(212,175,55,0.07) 0%, transparent 50%)",
-          "radial-gradient(ellipse at 80% 0%, rgba(212,175,55,0.05) 0%, transparent 45%)",
-          "radial-gradient(ellipse at 50% 100%, rgba(0,0,0,0.35) 0%, transparent 60%)",
-          "linear-gradient(170deg, #0a3828 0%, #0f4a35 30%, #123d2c 60%, #0a2d20 100%)",
-        ].join(", "),
-        backgroundAttachment: "fixed",
-        position: "relative",
-      }} className="augusta-bg">
+      <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #0b3d2e 0%, #145a43 100%)" }}>
 
         {/* ── LIVE TICKER ── */}
         <div className="ticker-wrap">
@@ -690,7 +637,30 @@ export default function App() {
               <h1 className="masters-title">Masters 2026</h1>
               <hr className="masters-rule-thin" style={{ margin: "14px auto", maxWidth: "260px" }} />
               <p className="masters-subtitle" style={{ marginBottom: "20px" }}>Degeneracy Unlike Any Other</p>
-              <hr className="masters-rule" style={{ marginBottom: "0px" }} />
+              <hr className="masters-rule" style={{ marginBottom: "20px" }} />
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                <button onClick={handleCopyLink} className={`share-btn${copied ? " copied" : ""}`}>
+                  {copied ? (
+                    <>
+                      <svg className="share-icon" viewBox="0 0 12 12" fill="none">
+                        <polyline points="1.5,6 4.5,9 10.5,3" stroke="#5ec47a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      Link copied!
+                    </>
+                  ) : (
+                    <>
+                      <svg className="share-icon" viewBox="0 0 12 12" fill="none">
+                        <circle cx="9.5" cy="2.5" r="1.5" stroke="#c8b97a" strokeWidth="1.2" />
+                        <circle cx="9.5" cy="9.5" r="1.5" stroke="#c8b97a" strokeWidth="1.2" />
+                        <circle cx="2.5" cy="6"   r="1.5" stroke="#c8b97a" strokeWidth="1.2" />
+                        <line x1="4" y1="5.2" x2="8" y2="3.3" stroke="#c8b97a" strokeWidth="1" strokeLinecap="round" />
+                        <line x1="4" y1="6.8" x2="8" y2="8.7" stroke="#c8b97a" strokeWidth="1" strokeLinecap="round" />
+                      </svg>
+                      Share pool link
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </header>
 
@@ -757,55 +727,22 @@ export default function App() {
               {/* 1. POOL LEADERBOARD */}
               <div style={sectionStyle}>
                 <h2 style={{ color: "#f7e7a1", marginTop: 0 }}>🏆 Pool Leaderboard</h2>
-                {!isLocked ? (
-                  // Hidden before lock — show entry count but not names
-                  <div style={{ textAlign: "center", padding: "20px 0" }}>
-                    <div style={{
-                      fontSize: "36px", fontWeight: "bold", color: "#d4af37",
-                      fontFamily: "'Playfair Display', serif",
-                    }}>
-                      {entries.length}
-                    </div>
-                    <div style={{
-                      fontSize: "13px", color: "#8aab93", marginTop: "6px",
-                      fontFamily: "'Playfair Display', serif", fontStyle: "italic",
-                    }}>
-                      {entries.length === 1 ? "entry submitted" : "entries submitted"}
-                    </div>
-                    <div style={{
-                      marginTop: "14px", padding: "10px 16px",
-                      background: "rgba(212,175,55,0.07)",
-                      border: "1px solid rgba(212,175,55,0.2)",
-                      borderRadius: "6px",
-                      fontSize: "12px", fontStyle: "italic",
-                      color: "#c8b97a", lineHeight: "1.6",
-                      fontFamily: "'Playfair Display', serif",
-                    }}>
-                      Entries and lineups are sealed until the field is locked.<br />
-                      The leaderboard reveals at midnight PT, April 9th.
-                    </div>
-                  </div>
-                ) : (
-                  // Revealed after lock
-                  <>
-                    {scored.length === 0 && (
-                      <p style={{ opacity: 0.5, fontSize: "13px", margin: 0 }}>No entries yet.</p>
-                    )}
-                    {scored.map((e, i) => (
-                      <div key={e.id} style={{
-                        display: "flex", justifyContent: "space-between",
-                        padding: "12px", margin: "6px 0",
-                        background: i === 0 ? "linear-gradient(90deg, #d4af37, #f7e7a1)" : "rgba(23,79,58,0.85)",
-                        color: i === 0 ? "black" : "white",
-                        borderRadius: "8px", fontWeight: i === 0 ? "bold" : "normal",
-                        boxShadow: i === 0 ? "0 0 10px rgba(212,175,55,0.6)" : "none",
-                      }}>
-                        <span>{i + 1}. {e.name}</span>
-                        <span>{e.score.toFixed(1)} pts</span>
-                      </div>
-                    ))}
-                  </>
+                {scored.length === 0 && (
+                  <p style={{ opacity: 0.5, fontSize: "13px", margin: 0 }}>No entries yet.</p>
                 )}
+                {scored.map((e, i) => (
+                  <div key={e.id} style={{
+                    display: "flex", justifyContent: "space-between",
+                    padding: "12px", margin: "6px 0",
+                    background: i === 0 ? "linear-gradient(90deg, #d4af37, #f7e7a1)" : "rgba(23,79,58,0.85)",
+                    color: i === 0 ? "black" : "white",
+                    borderRadius: "8px", fontWeight: i === 0 ? "bold" : "normal",
+                    boxShadow: i === 0 ? "0 0 10px rgba(212,175,55,0.6)" : "none",
+                  }}>
+                    <span>{i + 1}. {e.name}</span>
+                    <span>{e.score.toFixed(1)} pts</span>
+                  </div>
+                ))}
               </div>
 
               {/* 2. YOUR LINEUP */}
@@ -887,48 +824,19 @@ export default function App() {
                   <p style={{ color: "#e07070", fontStyle: "italic", fontSize: "13px", margin: 0 }}>
                     Submissions are closed. The field is set — good luck.
                   </p>
-                ) : submitSuccess ? (
-                  <div style={{
-                    textAlign: "center", padding: "16px 0",
-                    fontFamily: "'Playfair Display', serif",
-                  }}>
-                    <div style={{ fontSize: "28px", marginBottom: "8px" }}>⛳</div>
-                    <div style={{ color: "#5ec47a", fontWeight: "bold", fontSize: "15px", marginBottom: "6px" }}>
-                      Entry submitted!
-                    </div>
-                    <div style={{ color: "#8aab93", fontSize: "12px", fontStyle: "italic" }}>
-                      Your lineup is locked in. Good luck out there.
-                    </div>
-                  </div>
                 ) : (
                   <>
                     <input
                       placeholder="Your Name"
                       value={name}
-                      onChange={(e) => { setName(e.target.value); setSubmitError(""); }}
+                      onChange={(e) => setName(e.target.value)}
                       style={{
                         width: "100%", padding: "10px", marginBottom: "10px",
                         boxSizing: "border-box", borderRadius: "4px",
-                        border: submitError ? "1px solid rgba(220,80,80,0.6)" : "1px solid rgba(255,255,255,0.3)",
+                        border: "1px solid rgba(255,255,255,0.3)",
                         background: "rgba(0,0,0,0.3)", color: "white", fontSize: "14px",
                       }}
                     />
-                    {submitError && (
-                      <div style={{
-                        background: "rgba(180,60,60,0.15)",
-                        border: "1px solid rgba(220,80,80,0.3)",
-                        borderRadius: "4px",
-                        padding: "8px 12px",
-                        marginBottom: "10px",
-                        fontSize: "12px",
-                        fontStyle: "italic",
-                        color: "#e07070",
-                        fontFamily: "'Playfair Display', serif",
-                        lineHeight: "1.5",
-                      }}>
-                        {submitError}
-                      </div>
-                    )}
                     <button
                       onClick={submitEntry}
                       disabled={!canSubmit}
