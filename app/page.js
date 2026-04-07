@@ -5,9 +5,9 @@ import { collection, addDoc, onSnapshot, query, where } from "firebase/firestore
 
 const salaryCap = 50000;
 
-// 12:00 AM Pacific Time, Thursday April 10, 2025
-// Using April 10 2025 00:00 PT = 07:00 UTC
-const LOCK_TIME = new Date("2026-04-10T07:00:00Z");
+// 12:00 AM Pacific Time, Thursday April 9, 2026 (midnight going into Thursday)
+// 00:00 PT = 07:00 UTC
+const LOCK_TIME = new Date("2026-04-09T07:00:00Z");
 
 export default function App() {
   const [players, setPlayers] = useState([]);
@@ -18,6 +18,8 @@ export default function App() {
   const [tickerPlayers, setTickerPlayers] = useState([]);
   const [copied, setCopied] = useState(false);
   const [now, setNow] = useState(new Date());
+  const [submitError, setSubmitError] = useState("");
+  const [submitSuccess, setSubmitSuccess] = useState(false);
   const [draftSaved, setDraftSaved] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
 
@@ -113,11 +115,14 @@ export default function App() {
       { name: "Jason Day", salary: 7600 },
       { name: "Cameron Smith", salary: 7500 },
       { name: "Sungjae Im", salary: 7500 },
+      { name: "Nicolai Hojgaard", salary: 7500 },
       { name: "Jacob Bridgeman", salary: 7400 },
+      { name: "Jake Knapp", salary: 7400 },
       { name: "Sam Burns", salary: 7400 },
       { name: "Harris English", salary: 7300 },
       { name: "Max Homa", salary: 7300 },
       { name: "Marco Penge", salary: 7300 },
+      { name: "Gary Woodland", salary: 7300 },
       { name: "Adam Scott", salary: 7200 },
       { name: "J.J. Spaun", salary: 7200 },
       { name: "Maverick McNealy", salary: 7200 },
@@ -127,7 +132,8 @@ export default function App() {
       { name: "Alex Noren", salary: 7000 },
       { name: "Dustin Johnson", salary: 7000 },
       { name: "Keegan Bradley", salary: 7000 },
-      { name: "Tom McKibbin", salary: 6900 },
+      { name: "Daniel Berger", salary: 7000 },
+      { name: "Tom McKibbin", salary: 6500 },
       { name: "Rasmus Hojgaard", salary: 6900 },
       { name: "Harry Hall", salary: 6900 },
       { name: "Kurt Kitayama", salary: 6800 },
@@ -144,10 +150,8 @@ export default function App() {
       { name: "Sami Valimaki", salary: 6500 },
       { name: "Brian Harman", salary: 6500 },
       { name: "Nick Taylor", salary: 6500 },
-      { name: "Tiger Woods", salary: 6500 },
       { name: "Andrew Novak", salary: 6400 },
       { name: "Sam Stevens", salary: 6400 },
-      { name: "Phil Mickelson", salary: 6400 },
       { name: "Davis Riley", salary: 6400 },
       { name: "Kristoffer Reitan", salary: 6300 },
       { name: "Hao-Tong Li", salary: 6300 },
@@ -184,49 +188,90 @@ export default function App() {
 
   const fetchLiveScores = async () => {
     try {
-      const res = await fetch(
-        "https://site.api.espn.com/apis/site/v2/sports/golf/pga/leaderboard"
-      );
-      const data = await res.json();
-      const playersData = data?.events?.[0]?.competitions?.[0]?.competitors || [];
+      // Call our own API proxy — avoids CORS issues with SportRadar
+      const res = await fetch("/api/leaderboard");
+      if (!res.ok) throw new Error("Proxy fetch failed");
+      const { leaderboard: lbData, scorecards: scData } = await res.json();
 
-      const ticker = playersData
-        .filter((p) => p.status?.type?.name !== "STATUS_WITHDRAWN")
-        .sort((a, b) => (parseInt(a.rank) || 99) - (parseInt(b.rank) || 99))
-        .slice(0, 30)
-        .map((p) => {
-          const pos = p.rank || "–";
-          const playerName = p.athlete?.displayName || "Unknown";
-          const scoreVal = p.score?.value ?? p.statistics?.find(s => s.name === "scoreToPar")?.displayValue;
-          const scoreNum = parseInt(scoreVal) || 0;
-          return { pos, name: playerName, score: scoreNum };
+      // Build scorecard lookup keyed by player id
+      const scorecardMap = {};
+      if (scData?.players) {
+        scData.players.forEach((p) => {
+          let birdies = 0, pars = 0, bogeys = 0, doubles = 0, eagles = 0,
+              tripleOrWorse = 0, holeInOne = 0;
+          (p.rounds || []).forEach((round) => {
+            (round.holes || []).forEach((h) => {
+              const diff = (h.strokes || 0) - (h.par || 0);
+              if (h.strokes === 1 && h.par === 1) holeInOne++;
+              else if (diff <= -2) eagles++;
+              else if (diff === -1) birdies++;
+              else if (diff === 0) pars++;
+              else if (diff === 1) bogeys++;
+              else if (diff === 2) doubles++;
+              else if (diff >= 3) tripleOrWorse++;
+            });
+          });
+          scorecardMap[p.id] = {
+            birdies, pars, bogeys,
+            double_bogeys: doubles,
+            triple_bogeys: tripleOrWorse,
+            eagles, hole_in_one: holeInOne,
+          };
         });
+      }
+
+      const leaderboard = lbData?.leaderboard || [];
+
+      // Build ticker from leaderboard
+      const ticker = leaderboard
+        .filter((p) => p.status !== "withdrawn")
+        .slice(0, 30)
+        .map((p) => ({
+          pos: p.tied ? `T${p.position}` : `${p.position}`,
+          name: `${p.first_name} ${p.last_name}`,
+          score: p.score || 0,
+        }));
       setTickerPlayers(ticker);
 
+      // Build liveData for pool scoring
       const scores = {};
-      playersData.forEach((p) => {
-        const pName = p.athlete.displayName;
-        const position = parseInt(p.rank?.replace("T", "")) || 50;
-        let birdies = 0, pars = 0, bogeys = 0, doubles = 0, eagles = 0;
-        (p.linescores || []).forEach((round) => {
-          (round.holes || []).forEach((h) => {
-            if (h.score == null || h.par == null) return;
-            const diff = h.score - h.par;
-            if (diff === -2) eagles++;
-            else if (diff === -1) birdies++;
-            else if (diff === 0) pars++;
-            else if (diff === 1) bogeys++;
-            else if (diff === 2) doubles++;
-          });
-        });
-        scores[pName] = {
-          position, birdies, eagles, pars, bogeys,
-          double_bogeys: doubles, triple_bogeys: 0, hole_in_one: 0,
+      leaderboard.forEach((p) => {
+        const fullName = `${p.first_name} ${p.last_name}`;
+        const position = p.position || 99;
+        const sc = scorecardMap[p.id] || {};
+        scores[fullName] = {
+          position,
+          birdies:       sc.birdies       || 0,
+          eagles:        sc.eagles        || 0,
+          pars:          sc.pars          || 0,
+          bogeys:        sc.bogeys        || 0,
+          double_bogeys: sc.double_bogeys || 0,
+          triple_bogeys: sc.triple_bogeys || 0,
+          hole_in_one:   sc.hole_in_one   || 0,
         };
       });
       setLiveData(scores);
+
     } catch (err) {
-      console.error("❌ ESPN fetch failed", err);
+      console.error("❌ SportRadar proxy failed, trying ESPN fallback", err);
+      // Fallback to ESPN for ticker only
+      try {
+        const res = await fetch("https://site.api.espn.com/apis/site/v2/sports/golf/pga/leaderboard");
+        const data = await res.json();
+        const playersData = data?.events?.[0]?.competitions?.[0]?.competitors || [];
+        const ticker = playersData
+          .filter((p) => p.status?.type?.name !== "STATUS_WITHDRAWN")
+          .sort((a, b) => (parseInt(a.rank) || 99) - (parseInt(b.rank) || 99))
+          .slice(0, 30)
+          .map((p) => ({
+            pos: p.rank || "–",
+            name: p.athlete?.displayName || "Unknown",
+            score: parseInt(p.score?.value) || 0,
+          }));
+        setTickerPlayers(ticker);
+      } catch (e) {
+        console.error("❌ ESPN fallback also failed", e);
+      }
     }
   };
 
@@ -259,7 +304,19 @@ export default function App() {
   const submitEntry = async () => {
     if (isLocked || lineup.length !== 6 || !name || !poolId) return;
     if (lineup.reduce((s, p) => s + p.salary, 0) > salaryCap) return;
+    setSubmitError("");
+
+    // Check for duplicate name in this pool
+    const duplicate = entries.find(
+      (e) => e.name.trim().toLowerCase() === name.trim().toLowerCase()
+    );
+    if (duplicate) {
+      setSubmitError(`An entry for "${name}" already exists. Each person can only submit one lineup.`);
+      return;
+    }
+
     await addDoc(collection(db, "entries"), { poolId, name, players: lineup });
+    setSubmitSuccess(true);
     clearDraft();
   };
 
@@ -280,13 +337,13 @@ export default function App() {
       pos === 9 ? 8 : pos === 10 ? 7 : pos <= 15 ? 6 : pos <= 20 ? 5 :
       pos <= 25 ? 4 : pos <= 30 ? 3 : pos <= 40 ? 2 : pos <= 50 ? 1 : 0;
     return (
-      (stats.eagles || 0) * 8 +
+      (stats.eagles || 0) * 13 +      // double eagle or better = +13
       (stats.birdies || 0) * 3 +
       (stats.pars || 0) * 0.5 +
       (stats.bogeys || 0) * -0.5 +
       (stats.double_bogeys || 0) * -1 +
-      (stats.triple_bogeys || 0) * -1.5 +
-      (stats.hole_in_one || 0) * 10 +
+      (stats.triple_bogeys || 0) * -1 +  // worse than double bogey = -1
+      (stats.hole_in_one || 0) * 5 +
       positionPoints
     );
   };
@@ -296,15 +353,24 @@ export default function App() {
   const canSubmit = !isLocked && lineup.length === 6 && totalSalary <= salaryCap && !!name;
 
   const scored = entries
-    .map((e) => ({
-      ...e,
-      score: e.players.reduce((sum, p) => {
+    .map((e) => {
+      const playerStats = e.players.map((p) => {
         const key = Object.keys(liveData).find(
           (n) => normalizeName(n) === normalizeName(p.name)
         );
-        return key ? sum + calculateScore(liveData[key]) : sum;
-      }, 0),
-    }))
+        const stats = key ? liveData[key] : null;
+        return {
+          name: p.name,
+          stats,
+          points: stats ? calculateScore(stats) : 0,
+        };
+      });
+      return {
+        ...e,
+        playerStats,
+        score: playerStats.reduce((sum, p) => sum + p.points, 0),
+      };
+    })
     .sort((a, b) => b.score - a.score);
 
   // Time until lock countdown
@@ -327,11 +393,12 @@ export default function App() {
     : [{ pos: "–", name: "Awaiting live data...", score: null }];
 
   const sectionStyle = {
-    background: "linear-gradient(145deg, #174f3a, #0f2e23)",
-    border: "1px solid rgba(255,255,255,0.12)",
+    background: "linear-gradient(145deg, #163d2c, #0c2318)",
+    border: "1px solid rgba(212,175,55,0.15)",
     borderRadius: "8px",
     padding: "16px",
     marginBottom: "16px",
+    boxShadow: "0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)",
   };
   const tableStyle = { width: "100%", borderCollapse: "collapse", fontSize: "13px" };
   const thStyle = {
@@ -345,7 +412,7 @@ export default function App() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+SC:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&family=Cormorant:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap');
 
         /* ── TICKER ── */
         .ticker-wrap {
@@ -372,8 +439,8 @@ export default function App() {
           padding: 0 14px 0 12px;
           background: rgba(0,0,0,0.6);
           border-right: 1px solid rgba(212,175,55,0.3);
-          font-family: 'Playfair Display', serif;
-          font-size: 10px; font-style: italic;
+          font-family: 'Cormorant SC', 'Cormorant', serif;
+          font-size: 13px; font-style: italic;
           color: #d4af37; letter-spacing: 0.12em;
           white-space: nowrap; gap: 7px;
         }
@@ -398,36 +465,36 @@ export default function App() {
         }
         .ticker-item {
           display: inline-flex; align-items: center; gap: 6px;
-          padding: 8px 20px 8px 0;
-          font-family: 'Playfair Display', serif;
-          font-size: 12px; white-space: nowrap; color: #e8dfc0;
+          padding: 10px 20px 10px 0;
+          font-family: 'Cormorant SC', 'Cormorant', serif;
+          font-size: 15px; white-space: nowrap; color: #e8dfc0;
         }
-        .ticker-pos  { font-size: 10px; color: #8aab93; font-style: italic; min-width: 22px; }
+        .ticker-pos  { font-size: 13px; color: #8aab93; font-style: italic; min-width: 26px; }
         .ticker-name { font-weight: 600; color: #f0e8cc; }
         .ticker-score-under { color: #5ec47a; font-weight: 700; }
         .ticker-score-even  { color: #c8b97a; }
         .ticker-score-over  { color: #e07070; font-weight: 700; }
-        .ticker-divider { color: rgba(212,175,55,0.35); padding: 0 6px 0 20px; font-size: 10px; }
+        .ticker-divider { color: rgba(212,175,55,0.35); padding: 0 6px 0 20px; font-size: 13px; }
 
         /* ── HEADER ── */
         .masters-title {
-          font-family: 'Playfair Display', 'Times New Roman', serif;
-          font-size: clamp(38px, 5vw, 64px);
+          font-family: 'Cormorant SC', 'Cormorant', 'Times New Roman', serif;
+          font-size: clamp(42px, 5.5vw, 70px);
           font-weight: 700; font-style: italic;
-          color: #d4af37; letter-spacing: 0.03em; line-height: 1.05; margin: 0;
+          color: #d4af37; letter-spacing: 0.05em; line-height: 1.05; margin: 0;
           text-shadow: 0 1px 0 rgba(0,0,0,0.5), 0 0 40px rgba(212,175,55,0.25);
         }
         .masters-subtitle {
-          font-family: 'Playfair Display', 'Times New Roman', serif;
-          font-size: clamp(13px, 1.5vw, 16px);
+          font-family: 'Cormorant SC', 'Cormorant', 'Times New Roman', serif;
+          font-size: clamp(15px, 1.8vw, 19px);
           font-weight: 400; font-style: italic;
-          color: #c8b97a; letter-spacing: 0.12em; margin: 0;
+          color: #c8b97a; letter-spacing: 0.15em; margin: 0;
         }
         .masters-year {
-          font-family: 'Playfair Display', 'Times New Roman', serif;
-          font-size: clamp(12px, 1.2vw, 14px);
-          font-weight: 400; color: #8aab93;
-          letter-spacing: 0.35em; text-transform: uppercase; margin: 0;
+          font-family: 'Cormorant SC', 'Cormorant', 'Times New Roman', serif;
+          font-size: clamp(13px, 1.4vw, 16px);
+          font-weight: 600; color: #8aab93;
+          letter-spacing: 0.5em; text-transform: uppercase; margin: 0;
         }
         .masters-rule {
           border: none; height: 1px;
@@ -440,13 +507,97 @@ export default function App() {
           margin: 0;
         }
 
-        /* ── SHARE BUTTON ── */
+        /* ── AUGUSTA TEXTURE OVERLAY ── */
+        .augusta-bg::before {
+          content: '';
+          position: fixed;
+          inset: 0;
+          pointer-events: none;
+          z-index: 0;
+          background-image:
+            repeating-linear-gradient(
+              0deg,
+              transparent,
+              transparent 3px,
+              rgba(0,0,0,0.04) 3px,
+              rgba(0,0,0,0.04) 4px
+            ),
+            repeating-linear-gradient(
+              90deg,
+              transparent,
+              transparent 8px,
+              rgba(255,255,255,0.012) 8px,
+              rgba(255,255,255,0.012) 9px
+            );
+        }
+        .augusta-bg > * { position: relative; z-index: 1; }
+
+        /* ── SCORECARD LEADERBOARD ── */
+        .scorecard-table {
+          width: 100%; border-collapse: collapse;
+          font-family: 'Cormorant SC', 'Cormorant', serif; font-size: 13px;
+        }
+        .scorecard-table thead tr {
+          background: rgba(0,0,0,0.3);
+          border-bottom: 1px solid rgba(212,175,55,0.4);
+        }
+        .scorecard-table th {
+          padding: 7px 8px; color: #d4af37;
+          font-size: 10px; font-weight: 700;
+          letter-spacing: 1.2px; text-transform: uppercase;
+          text-align: center; font-style: normal;
+        }
+        .scorecard-table th:first-child,
+        .scorecard-table th:nth-child(2) { text-align: left; }
+        .scorecard-table tbody tr {
+          border-bottom: 1px solid rgba(255,255,255,0.05);
+          transition: background 0.15s;
+        }
+        .scorecard-table tbody tr:hover { background: rgba(255,255,255,0.03); }
+        .scorecard-table tbody tr.row-first {
+          background: linear-gradient(90deg, rgba(212,175,55,0.22), rgba(212,175,55,0.08));
+          border-bottom: 1px solid rgba(212,175,55,0.3);
+        }
+        .scorecard-table td { padding: 0; vertical-align: top; }
+        .scorecard-pos {
+          padding: 10px 6px 10px 8px; color: #8aab93;
+          font-size: 12px; font-style: italic;
+          white-space: nowrap; width: 24px;
+        }
+        .row-first .scorecard-pos { color: #d4af37; }
+        .scorecard-name-col { padding: 6px 8px; }
+        .scorecard-entry-name {
+          font-size: 14px; font-weight: 700;
+          color: #f7e7a1; letter-spacing: 0.03em;
+        }
+        .row-first .scorecard-entry-name { color: #0b3d2e; }
+        .scorecard-players {
+          display: flex; flex-wrap: wrap; gap: 2px 8px; margin-top: 3px;
+        }
+        .scorecard-player-chip {
+          font-size: 11px; font-style: italic; color: #8aab93; white-space: nowrap;
+        }
+        .row-first .scorecard-player-chip { color: #2a5a3a; }
+        .chip-eagle { color: #d4af37 !important; font-weight: 700; }
+        .chip-birdie { color: #5ec47a !important; }
+        .chip-bogey { color: #e07070 !important; }
+        .chip-pos { color: #a8c4ae !important; font-size: 10px; }
+        .scorecard-pts {
+          padding: 10px 10px 10px 4px; text-align: right;
+          font-size: 16px; font-weight: 700; color: #d4af37; white-space: nowrap;
+        }
+        .row-first .scorecard-pts { color: #0b3d2e; }
+        .scorecard-pts-label {
+          font-size: 9px; font-weight: 400; opacity: 0.7;
+          letter-spacing: 0.5px; text-transform: uppercase; display: block;
+        }
+
         .share-btn {
           display: inline-flex; align-items: center; gap: 8px;
           background: rgba(0,0,0,0.3);
           border: 1px solid rgba(212,175,55,0.35); border-radius: 20px;
           padding: 6px 16px;
-          font-family: 'Playfair Display', serif;
+          font-family: 'Cormorant SC', 'Cormorant', serif;
           font-size: 12px; font-style: italic; color: #c8b97a;
           letter-spacing: 0.05em; cursor: pointer; transition: all 0.2s ease;
         }
@@ -456,11 +607,12 @@ export default function App() {
 
         /* ── PLAYER PICKER ── */
         .picker-section {
-          background: linear-gradient(145deg, #174f3a, #0f2e23);
-          border: 1px solid rgba(255,255,255,0.12);
+          background: linear-gradient(145deg, #163d2c, #0c2318);
+          border: 1px solid rgba(212,175,55,0.15);
           border-radius: 8px;
           padding: 16px;
           margin-bottom: 16px;
+          box-shadow: 0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04);
         }
         .picker-header {
           display: flex;
@@ -469,7 +621,7 @@ export default function App() {
           margin-bottom: 4px;
         }
         .picker-title {
-          font-family: 'Playfair Display', 'Times New Roman', serif;
+          font-family: 'Cormorant SC', 'Cormorant', 'Times New Roman', serif;
           font-size: clamp(18px, 2vw, 22px);
           font-weight: 700;
           font-style: italic;
@@ -478,8 +630,8 @@ export default function App() {
           margin: 0;
         }
         .picker-salary-cap {
-          font-family: 'Playfair Display', serif;
-          font-size: 11px;
+          font-family: 'Cormorant SC', 'Cormorant', serif;
+          font-size: 14px;
           font-style: italic;
           color: #8aab93;
           letter-spacing: 0.08em;
@@ -499,8 +651,8 @@ export default function App() {
           background: rgba(255,255,255,0.03);
           cursor: pointer;
           transition: all 0.18s ease;
-          font-family: 'Playfair Display', serif;
-          font-size: 13px;
+          font-family: 'Cormorant SC', 'Cormorant', serif;
+          font-size: 17px;
         }
         .player-row:hover:not(.player-row--locked):not(.player-row--selected) {
           background: rgba(255,255,255,0.07);
@@ -516,8 +668,8 @@ export default function App() {
         .player-row--selected .player-salary { color: #d4af37; }
         .player-row--full { opacity: 0.38; cursor: default; }
         .player-row--locked { cursor: not-allowed; opacity: 0.5; }
-        .player-name { color: #ddd8c4; font-style: italic; letter-spacing: 0.02em; }
-        .player-salary { color: #8aab93; font-size: 12px; font-style: normal; letter-spacing: 0.05em; }
+        .player-name { color: #f5f0e0; font-style: italic; letter-spacing: 0.02em; font-size: 17px; }
+        .player-salary { color: #a8c4ae; font-size: 15px; font-style: normal; letter-spacing: 0.05em; }
         .player-check {
           width: 16px; height: 16px; margin-right: 8px;
           border-radius: 50%; background: #d4af37;
@@ -532,7 +684,7 @@ export default function App() {
           border-radius: 6px;
           padding: 12px 16px;
           text-align: center;
-          font-family: 'Playfair Display', serif;
+          font-family: 'Cormorant SC', 'Cormorant', serif;
           font-size: 13px;
           font-style: italic;
           color: #e07070;
@@ -545,7 +697,7 @@ export default function App() {
           border-radius: 6px;
           padding: 10px 16px;
           text-align: center;
-          font-family: 'Playfair Display', serif;
+          font-family: 'Cormorant SC', 'Cormorant', serif;
           font-size: 12px;
           font-style: italic;
           color: #c8b97a;
@@ -567,7 +719,7 @@ export default function App() {
           border: 1px solid rgba(212,175,55,0.3);
           border-radius: 4px;
           padding: 7px 14px;
-          font-family: 'Playfair Display', serif;
+          font-family: 'Cormorant SC', 'Cormorant', serif;
           font-size: 12px; font-style: italic;
           color: #c8b97a; cursor: pointer;
           transition: all 0.2s; letter-spacing: 0.04em;
@@ -578,7 +730,41 @@ export default function App() {
         .draft-btn.clear:hover { background: rgba(220,80,80,0.1); border-color: rgba(220,80,80,0.5); color: #e07070; }
       `}</style>
 
-      <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #0b3d2e 0%, #145a43 100%)" }}>
+      <div style={{
+        minHeight: "100vh",
+        background: [
+          "radial-gradient(ellipse at 20% 0%, rgba(212,175,55,0.07) 0%, transparent 50%)",
+          "radial-gradient(ellipse at 80% 0%, rgba(212,175,55,0.05) 0%, transparent 45%)",
+          "radial-gradient(ellipse at 50% 100%, rgba(0,0,0,0.35) 0%, transparent 60%)",
+          "linear-gradient(170deg, #0a3828 0%, #0f4a35 30%, #123d2c 60%, #0a2d20 100%)",
+        ].join(", "),
+        backgroundAttachment: "fixed",
+        position: "relative",
+      }} className="augusta-bg">
+
+        {/* ── DECORATIVE BACKGROUND PATTERN ── */}
+        <div style={{
+          position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0,
+          backgroundImage: `
+            radial-gradient(ellipse at 15% 85%, rgba(212,175,55,0.06) 0%, transparent 45%),
+            radial-gradient(ellipse at 85% 15%, rgba(212,175,55,0.05) 0%, transparent 40%),
+            radial-gradient(ellipse at 85% 85%, rgba(10,56,40,0.8) 0%, transparent 50%),
+            radial-gradient(ellipse at 15% 15%, rgba(10,56,40,0.6) 0%, transparent 50%)
+          `,
+        }} />
+        {/* Green jacket diamond weave pattern */}
+        <svg style={{
+          position: "fixed", inset: 0, width: "100%", height: "100%",
+          pointerEvents: "none", zIndex: 0, opacity: 0.025,
+        }} xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="jacket-weave" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+              <path d="M12 0 L24 12 L12 24 L0 12 Z" fill="none" stroke="#d4af37" strokeWidth="0.5"/>
+              <path d="M12 6 L18 12 L12 18 L6 12 Z" fill="none" stroke="#d4af37" strokeWidth="0.3"/>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#jacket-weave)"/>
+        </svg>
 
         {/* ── LIVE TICKER ── */}
         <div className="ticker-wrap">
@@ -614,7 +800,7 @@ export default function App() {
           <header style={{ textAlign: "center", padding: "36px 20px 32px", marginBottom: "32px" }}>
             <div style={{
               position: "relative", display: "inline-block",
-              width: "100%", maxWidth: "680px",
+              width: "100%", maxWidth: "780px",
               padding: "32px 40px 28px", boxSizing: "border-box",
             }}>
               {[
@@ -632,35 +818,73 @@ export default function App() {
                   <circle cx="2" cy="30" r="1" fill="#d4af37" opacity="0.5" />
                 </svg>
               ))}
-              <hr className="masters-rule" style={{ marginBottom: "18px" }} />
-              <p className="masters-year" style={{ marginBottom: "10px" }}>Peter&nbsp;&nbsp;Pan</p>
-              <h1 className="masters-title">Masters 2026</h1>
-              <hr className="masters-rule-thin" style={{ margin: "14px auto", maxWidth: "260px" }} />
-              <p className="masters-subtitle" style={{ marginBottom: "20px" }}>Degeneracy Unlike Any Other</p>
-              <hr className="masters-rule" style={{ marginBottom: "20px" }} />
-              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-                <button onClick={handleCopyLink} className={`share-btn${copied ? " copied" : ""}`}>
-                  {copied ? (
-                    <>
-                      <svg className="share-icon" viewBox="0 0 12 12" fill="none">
-                        <polyline points="1.5,6 4.5,9 10.5,3" stroke="#5ec47a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      Link copied!
-                    </>
-                  ) : (
-                    <>
-                      <svg className="share-icon" viewBox="0 0 12 12" fill="none">
-                        <circle cx="9.5" cy="2.5" r="1.5" stroke="#c8b97a" strokeWidth="1.2" />
-                        <circle cx="9.5" cy="9.5" r="1.5" stroke="#c8b97a" strokeWidth="1.2" />
-                        <circle cx="2.5" cy="6"   r="1.5" stroke="#c8b97a" strokeWidth="1.2" />
-                        <line x1="4" y1="5.2" x2="8" y2="3.3" stroke="#c8b97a" strokeWidth="1" strokeLinecap="round" />
-                        <line x1="4" y1="6.8" x2="8" y2="8.7" stroke="#c8b97a" strokeWidth="1" strokeLinecap="round" />
-                      </svg>
-                      Share pool link
-                    </>
-                  )}
-                </button>
+              <hr className="masters-rule" style={{ marginBottom: "22px" }} />
+
+              {/* PETER PAN — small caps, wide spaced eyebrow */}
+              <p style={{
+                fontFamily: "'Cormorant SC', 'Cormorant', serif",
+                fontSize: "clamp(11px, 1.3vw, 14px)",
+                fontWeight: 600,
+                fontStyle: "normal",
+                color: "#8aab93",
+                letterSpacing: "0.55em",
+                textTransform: "uppercase",
+                margin: "0 0 10px 0",
+              }}>
+                Peter&nbsp;&nbsp;Pan
+              </p>
+
+              {/* MASTERS — the dominant word, stacked and large */}
+              <div style={{ position: "relative", margin: "0 0 2px 0" }}>
+                <h1 style={{
+                  fontFamily: "'Cormorant SC', 'Cormorant', serif",
+                  fontSize: "clamp(64px, 10vw, 108px)",
+                  fontWeight: 700,
+                  fontStyle: "italic",
+                  color: "#d4af37",
+                  letterSpacing: "0.06em",
+                  lineHeight: 0.9,
+                  margin: 0,
+                  textShadow: `
+                    0 2px 0 rgba(0,0,0,0.4),
+                    0 0 60px rgba(212,175,55,0.3),
+                    0 0 120px rgba(212,175,55,0.1)
+                  `,
+                }}>
+                  Masters
+                </h1>
               </div>
+
+              {/* 2026 — large numerals, below Masters, slightly inset */}
+              <div style={{
+                fontFamily: "'Cormorant SC', 'Cormorant', serif",
+                fontSize: "clamp(22px, 3.2vw, 38px)",
+                fontWeight: 400,
+                fontStyle: "normal",
+                color: "#c8b97a",
+                letterSpacing: "0.45em",
+                marginBottom: "16px",
+                opacity: 0.85,
+              }}>
+                2026
+              </div>
+
+              <hr className="masters-rule-thin" style={{ margin: "0 auto 16px", maxWidth: "300px" }} />
+
+              {/* Tagline */}
+              <p style={{
+                fontFamily: "'Cormorant SC', 'Cormorant', serif",
+                fontSize: "clamp(13px, 1.6vw, 17px)",
+                fontWeight: 400,
+                fontStyle: "italic",
+                color: "#c8b97a",
+                letterSpacing: "0.18em",
+                margin: "0 0 20px 0",
+              }}>
+                Degeneracy Unlike Any Other
+              </p>
+
+              <hr className="masters-rule" style={{ marginBottom: "0px" }} />
             </div>
           </header>
 
@@ -727,22 +951,84 @@ export default function App() {
               {/* 1. POOL LEADERBOARD */}
               <div style={sectionStyle}>
                 <h2 style={{ color: "#f7e7a1", marginTop: 0 }}>🏆 Pool Leaderboard</h2>
-                {scored.length === 0 && (
-                  <p style={{ opacity: 0.5, fontSize: "13px", margin: 0 }}>No entries yet.</p>
-                )}
-                {scored.map((e, i) => (
-                  <div key={e.id} style={{
-                    display: "flex", justifyContent: "space-between",
-                    padding: "12px", margin: "6px 0",
-                    background: i === 0 ? "linear-gradient(90deg, #d4af37, #f7e7a1)" : "rgba(23,79,58,0.85)",
-                    color: i === 0 ? "black" : "white",
-                    borderRadius: "8px", fontWeight: i === 0 ? "bold" : "normal",
-                    boxShadow: i === 0 ? "0 0 10px rgba(212,175,55,0.6)" : "none",
-                  }}>
-                    <span>{i + 1}. {e.name}</span>
-                    <span>{e.score.toFixed(1)} pts</span>
+                {!isLocked ? (
+                  // Hidden before lock — show entry count but not names
+                  <div style={{ textAlign: "center", padding: "20px 0" }}>
+                    <div style={{
+                      fontSize: "36px", fontWeight: "bold", color: "#d4af37",
+                      fontFamily: "'Cormorant SC', 'Cormorant', serif",
+                    }}>
+                      {entries.length}
+                    </div>
+                    <div style={{
+                      fontSize: "13px", color: "#8aab93", marginTop: "6px",
+                      fontFamily: "'Cormorant SC', 'Cormorant', serif", fontStyle: "italic",
+                    }}>
+                      {entries.length === 1 ? "entry submitted" : "entries submitted"}
+                    </div>
+                    <div style={{
+                      marginTop: "14px", padding: "10px 16px",
+                      background: "rgba(212,175,55,0.07)",
+                      border: "1px solid rgba(212,175,55,0.2)",
+                      borderRadius: "6px",
+                      fontSize: "14px", fontStyle: "italic",
+                      color: "#c8b97a", lineHeight: "1.8",
+                      fontFamily: "'Cormorant SC', 'Cormorant', serif",
+                    }}>
+                      Entries and lineups are sealed until the field is locked.<br />
+                      The leaderboard reveals at midnight PT, April 9th.
+                    </div>
                   </div>
-                ))}
+                ) : (
+                  // Revealed after lock
+                  <>
+                    {scored.length === 0 && (
+                      <p style={{ opacity: 0.5, fontSize: "13px", margin: 0 }}>No entries yet.</p>
+                    )}
+                    <table className="scorecard-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: "28px" }}>#</th>
+                          <th>Entrant / Roster</th>
+                          <th style={{ textAlign: "right" }}>Pts</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {scored.map((e, i) => (
+                          <tr key={e.id} className={i === 0 ? "row-first" : ""}>
+                            <td className="scorecard-pos">{i + 1}</td>
+                            <td className="scorecard-name-col">
+                              <div className="scorecard-entry-name">{e.name}</div>
+                              <div className="scorecard-players">
+                                {(e.playerStats || []).map((p, j) => {
+                                  const s = p.stats;
+                                  const chips = [];
+                                  if (s) {
+                                    if (s.eagles > 0) chips.push(<span key="e" className="chip-eagle">🦅×{s.eagles}</span>);
+                                    if (s.birdies > 0) chips.push(<span key="b" className="chip-birdie">🐦×{s.birdies}</span>);
+                                    if (s.bogeys > 0) chips.push(<span key="bo" className="chip-bogey">↑{s.bogeys}</span>);
+                                    if (s.position && s.position <= 50) chips.push(<span key="pos" className="chip-pos">T{s.position}</span>);
+                                  }
+                                  return (
+                                    <span key={j} className="scorecard-player-chip">
+                                      {p.name.split(" ").slice(-1)[0]}
+                                      {chips.length > 0 && <span style={{ marginLeft: "3px" }}>{chips}</span>}
+                                      {j < (e.playerStats?.length || 0) - 1 && <span style={{ opacity: 0.3, marginLeft: "2px" }}>·</span>}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            </td>
+                            <td className="scorecard-pts">
+                              {e.score.toFixed(1)}
+                              <span className="scorecard-pts-label">pts</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </>
+                )}
               </div>
 
               {/* 2. YOUR LINEUP */}
@@ -778,7 +1064,7 @@ export default function App() {
                   <div style={{
                     fontSize: "11px", fontStyle: "italic", color: "#8aab93",
                     marginBottom: "10px", letterSpacing: "0.04em",
-                    fontFamily: "'Playfair Display', serif",
+                    fontFamily: "'Cormorant SC', 'Cormorant', serif",
                   }}>
                     Draft saved — your picks will be here when you return.
                   </div>
@@ -824,19 +1110,48 @@ export default function App() {
                   <p style={{ color: "#e07070", fontStyle: "italic", fontSize: "13px", margin: 0 }}>
                     Submissions are closed. The field is set — good luck.
                   </p>
+                ) : submitSuccess ? (
+                  <div style={{
+                    textAlign: "center", padding: "16px 0",
+                    fontFamily: "'Cormorant SC', 'Cormorant', serif",
+                  }}>
+                    <div style={{ fontSize: "28px", marginBottom: "8px" }}>⛳</div>
+                    <div style={{ color: "#5ec47a", fontWeight: "bold", fontSize: "15px", marginBottom: "6px" }}>
+                      Entry submitted!
+                    </div>
+                    <div style={{ color: "#8aab93", fontSize: "12px", fontStyle: "italic" }}>
+                      Your lineup is locked in. Good luck out there.
+                    </div>
+                  </div>
                 ) : (
                   <>
                     <input
                       placeholder="Your Name"
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      onChange={(e) => { setName(e.target.value); setSubmitError(""); }}
                       style={{
                         width: "100%", padding: "10px", marginBottom: "10px",
                         boxSizing: "border-box", borderRadius: "4px",
-                        border: "1px solid rgba(255,255,255,0.3)",
+                        border: submitError ? "1px solid rgba(220,80,80,0.6)" : "1px solid rgba(255,255,255,0.3)",
                         background: "rgba(0,0,0,0.3)", color: "white", fontSize: "14px",
                       }}
                     />
+                    {submitError && (
+                      <div style={{
+                        background: "rgba(180,60,60,0.15)",
+                        border: "1px solid rgba(220,80,80,0.3)",
+                        borderRadius: "4px",
+                        padding: "8px 12px",
+                        marginBottom: "10px",
+                        fontSize: "12px",
+                        fontStyle: "italic",
+                        color: "#e07070",
+                        fontFamily: "'Cormorant SC', 'Cormorant', serif",
+                        lineHeight: "1.5",
+                      }}>
+                        {submitError}
+                      </div>
+                    )}
                     <button
                       onClick={submitEntry}
                       disabled={!canSubmit}
