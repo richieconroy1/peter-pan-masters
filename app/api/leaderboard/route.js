@@ -3,7 +3,7 @@ const SR_BASE = `https://api.sportradar.com/golf/trial/pga/v3/en/2026/tournament
 
 export async function GET() {
   try {
-    const apiKey = process.env.NEXT_PUBLIC_SPORTRADAR_API_KEY;
+    const apiKey = process.env.SPORTRADAR_API_KEY;
 
     const [lbRes, scRes] = await Promise.all([
       fetch(`${SR_BASE}/leaderboard.json?api_key=${apiKey}`, {
