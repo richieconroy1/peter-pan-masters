@@ -8,7 +8,6 @@ export async function GET() {
       return Response.json({ error: "Missing API key" }, { status: 500 });
     }
 
-    // Always fetch leaderboard and scorecards
     const [lbRes, scRes] = await Promise.all([
       fetch(`${SR_BASE}/leaderboard.json?api_key=${apiKey}`),
       fetch(`${SR_BASE}/scorecards.json?api_key=${apiKey}`),
@@ -17,35 +16,13 @@ export async function GET() {
     const leaderboard = await lbRes.json();
     const scorecards = scRes.ok ? await scRes.json() : null;
 
-    // Check if tournament has live data
-    const hasLiveData = (leaderboard?.leaderboard?.length || 0) > 0;
-    let teeTimes = null;
-
-    // If no live data yet, fetch tee times for round 1
-    if (!hasLiveData) {
-      try {
-        const ttRes = await fetch(
-          `${SR_BASE}/rounds/1/tee_times.json?api_key=${apiKey}`
-        );
-        if (ttRes.ok) {
-          const ttData = await ttRes.json();
-          if (ttData?.groups) {
-            // Flatten into simple array of { tee_time, name }
-            teeTimes = ttData.groups.flatMap((g) =>
-              (g.players || []).map((p) => ({
-                tee_time: g.tee_time,
-                name: `${p.first_name || ""} ${p.last_name || ""}`.trim(),
-              }))
-            );
-          }
-        }
-      } catch (ttErr) {
-        console.error("Tee times fetch failed:", ttErr);
-        // Non-fatal — just return without tee times
-      }
+    if (leaderboard?.message === "Limit Exceeded") {
+      return Response.json({ error: "quota_exceeded" }, { status: 429 });
     }
 
-    return Response.json({ leaderboard, scorecards, teeTimes, hasLiveData });
+    const hasLiveData = (leaderboard?.leaderboard?.length || 0) > 0;
+
+    return Response.json({ leaderboard, scorecards, teeTimes: null, hasLiveData });
   } catch (err) {
     return Response.json({ error: err.message }, { status: 500 });
   }
