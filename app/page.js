@@ -195,91 +195,43 @@ export default function App() {
 
   const fetchLiveScores = async () => {
     try {
-      showToast("Updating scores...", "info");
-      throw new Error("force_espn"); // temp bypass SR
-      if (!res.ok) throw new Error("Proxy fetch failed");
-      const { leaderboard: lbData, scorecards: scData } = await res.json();
-
-      // Build scorecard lookup keyed by player id
-      const scorecardMap = {};
-      if (scData?.players) {
-        scData.players.forEach((p) => {
-          let birdies = 0, pars = 0, bogeys = 0, doubles = 0, eagles = 0,
-              tripleOrWorse = 0, holeInOne = 0;
-          (p.rounds || []).forEach((round) => {
-            (round.holes || []).forEach((h) => {
-              const diff = (h.strokes || 0) - (h.par || 0);
-              if (h.strokes === 1 && h.par === 1) holeInOne++;
-              else if (diff <= -2) eagles++;
-              else if (diff === -1) birdies++;
-              else if (diff === 0) pars++;
-              else if (diff === 1) bogeys++;
-              else if (diff === 2) doubles++;
-              else if (diff >= 3) tripleOrWorse++;
-            });
-          });
-          scorecardMap[p.id] = {
-            birdies, pars, bogeys,
-            double_bogeys: doubles,
-            triple_bogeys: tripleOrWorse,
-            eagles, hole_in_one: holeInOne,
-          };
-        });
-      }
-
-      const leaderboard = lbData?.leaderboard || [];
-
-      // Build ticker from leaderboard
-      const ticker = leaderboard
-        .filter((p) => p.status !== "withdrawn")
-        .slice(0, 30)
+      const res = await fetch("https://site.api.espn.com/apis/site/v2/sports/golf/pga/leaderboard");
+      const data = await res.json();
+      const playersData = data?.events?.[0]?.competitions?.[0]?.competitors || [];
+      const ticker = playersData
+        .filter((p) => p.status?.type?.name !== "STATUS_WITHDRAWN")
+        .sort((a, b) => (parseInt(a.rank) || 99) - (parseInt(b.rank) || 99))
+        .slice(0, 50)
         .map((p) => ({
-          pos: p.tied ? `T${p.position}` : `${p.position}`,
-          name: `${p.first_name} ${p.last_name}`,
-          score: p.score || 0,
+          pos: p.rank || "–",
+          name: p.athlete?.displayName || "Unknown",
+          score: (!isNaN(Number(p.score?.value)) && p.score?.value != null) ? Number(p.score?.value) : null,
         }));
       setTickerPlayers(ticker);
-
-      // Build liveData for pool scoring
       const scores = {};
-      leaderboard.forEach((p) => {
-        const fullName = `${p.first_name} ${p.last_name}`;
-        const position = p.position || 99;
-        const sc = scorecardMap[p.id] || {};
-        scores[fullName] = {
-          position,
-          birdies:       sc.birdies       || 0,
-          eagles:        sc.eagles        || 0,
-          pars:          sc.pars          || 0,
-          bogeys:        sc.bogeys        || 0,
-          double_bogeys: sc.double_bogeys || 0,
-          triple_bogeys: sc.triple_bogeys || 0,
-          hole_in_one:   sc.hole_in_one   || 0,
-        };
+      playersData.forEach((p) => {
+        const pName = p.athlete?.displayName;
+        if (!pName) return;
+        const position = parseInt(p.rank?.replace("T","")) || 99;
+        let birdies=0,pars=0,bogeys=0,doubles=0,eagles=0;
+        (p.linescores||[]).forEach((round)=>{
+          (round.holes||[]).forEach((h)=>{
+            if(h.score==null||h.par==null)return;
+            const diff=h.score-h.par;
+            if(diff<=-2)eagles++;
+            else if(diff===-1)birdies++;
+            else if(diff===0)pars++;
+            else if(diff===1)bogeys++;
+            else if(diff===2)doubles++;
+          });
+        });
+        scores[pName]={position,birdies,eagles,pars,bogeys,double_bogeys:doubles,triple_bogeys:0,hole_in_one:0};
       });
       setLiveData(scores);
-
-    } catch (err) {
-      console.error("❌ SportRadar proxy failed, trying ESPN fallback", err);
-      // Fallback to ESPN for ticker only
-      try {
-        const res = await fetch("https://site.api.espn.com/apis/site/v2/sports/golf/pga/leaderboard");
-        const data = await res.json();
-        const playersData = data?.events?.[0]?.competitions?.[0]?.competitors || [];
-        const ticker = playersData
-          .filter((p) => p.status?.type?.name !== "STATUS_WITHDRAWN")
-          .sort((a, b) => (parseInt(a.rank) || 99) - (parseInt(b.rank) || 99))
-          .slice(0, 30)
-          .map((p) => ({
-            pos: p.rank || "–",
-            name: p.athlete?.displayName || "Unknown",
-            score: (!isNaN(Number(p.score?.value)) && p.score?.value !== null) ? Number(p.score?.value) : null,
-          }));
-        setTickerPlayers(ticker);
-      } catch (e) {
-        console.error("❌ ESPN fallback also failed", e);
-      }
+    } catch(err) {
+      console.error("ESPN fetch failed",err);
     }
+  // ESPNONLY
   };
 
   useEffect(() => {
