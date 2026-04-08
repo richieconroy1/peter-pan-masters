@@ -273,7 +273,7 @@ export default function App() {
           .map((p) => ({
             pos: p.rank || "–",
             name: p.athlete?.displayName || "Unknown",
-            score: parseInt(p.score?.value) || 0,
+            score: (!isNaN(Number(p.score?.value)) && p.score?.value !== null) ? Number(p.score?.value) : null,
           }));
         setTickerPlayers(ticker);
       } catch (e) {
@@ -293,7 +293,7 @@ export default function App() {
   useEffect(() => {
     if (!players || players.length === 0) return;
     fetchLiveScores();
-    const interval = setInterval(fetchLiveScores, 300000);
+    const interval = setInterval(fetchLiveScores, 20000);
     return () => clearInterval(interval);
   }, [players.length]);
 
