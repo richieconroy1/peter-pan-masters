@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { db } from "../lib/firebase";
 import { collection, addDoc, onSnapshot, query, where } from "firebase/firestore";
+import "./masters.css";
 
 const salaryCap = 50000;
 
@@ -140,7 +141,7 @@ export default function App() {
       { name: "Dustin Johnson", salary: 7000 },
       { name: "Keegan Bradley", salary: 7000 },
       { name: "Daniel Berger", salary: 7000 },
-      { name: "Tom McKibbin", salary: 6500 },
+      { name: "Tom McKibbin", salary: 6900 },
       { name: "Rasmus Hojgaard", salary: 6900 },
       { name: "Harry Hall", salary: 6900 },
       { name: "Kurt Kitayama", salary: 6800 },
@@ -198,7 +199,7 @@ export default function App() {
       showToast("Updating scores...", "info");
       const res = await fetch("/api/leaderboard");
       if (!res.ok) throw new Error("Proxy fetch failed");
-      const { leaderboard: lbData, scorecards: scData } = await res.json();
+      const { leaderboard: lbData, scorecards: scData, teeTimes, hasLiveData } = await res.json();
 
       // Build scorecard lookup keyed by player id
       const scorecardMap = {};
@@ -229,15 +230,38 @@ export default function App() {
 
       const leaderboard = lbData?.leaderboard || [];
 
-      // Build ticker from leaderboard
+      // Before tournament starts — show tee times in ticker
+      if (!hasLiveData && teeTimes && teeTimes.length > 0) {
+        const ticker = teeTimes.map((t) => ({
+          pos: t.tee_time
+            ? new Date(t.tee_time).toLocaleTimeString("en-US", {
+                hour: "numeric", minute: "2-digit",
+                hour12: true, timeZone: "America/New_York",
+              })
+            : "–",
+          name: t.name,
+          score: null,
+          isTeeTime: true,
+        }));
+        setTickerPlayers(ticker);
+        setLiveData({});
+        return;
+      }
+
+      // Live play — build ticker from leaderboard
       const ticker = leaderboard
         .filter((p) => p.status !== "withdrawn")
         .slice(0, 30)
-        .map((p) => ({
-          pos: p.tied ? `T${p.position}` : `${p.position}`,
-          name: `${p.first_name} ${p.last_name}`,
-          score: p.score || 0,
-        }));
+        .map((p) => {
+          const rawScore = p.score;
+          const score = (rawScore !== null && rawScore !== undefined && !isNaN(Number(rawScore)))
+            ? Number(rawScore) : null;
+          return {
+            pos: p.tied ? `T${p.position}` : `${p.position || "–"}`,
+            name: `${p.first_name || ""} ${p.last_name || ""}`.trim(),
+            score,
+          };
+        });
       setTickerPlayers(ticker);
 
       // Build liveData for pool scoring
@@ -440,481 +464,6 @@ export default function App() {
 
   return (
     <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+SC:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&family=Cormorant:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap');
-
-        /* ── PAGE LOAD ANIMATIONS ── */
-        @keyframes fadeSlideDown {
-          from { opacity: 0; transform: translateY(-16px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes fadeSlideUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to   { opacity: 1; }
-        }
-        @keyframes countUp {
-          from { opacity: 0.4; transform: scale(0.95); }
-          to   { opacity: 1;   transform: scale(1); }
-        }
-        .anim-header {
-          opacity: 0;
-          animation: fadeSlideDown 0.7s ease forwards;
-          animation-delay: 0.1s;
-        }
-        .anim-ticker {
-          opacity: 0;
-          animation: fadeSlideDown 0.5s ease forwards;
-          animation-delay: 0s;
-        }
-        .anim-left {
-          opacity: 0;
-          animation: fadeSlideUp 0.7s ease forwards;
-          animation-delay: 0.3s;
-        }
-        .anim-right {
-          opacity: 0;
-          animation: fadeSlideUp 0.7s ease forwards;
-          animation-delay: 0.5s;
-        }
-        .score-update {
-          animation: countUp 0.4s ease;
-        }
-
-        /* ── TOAST ── */
-        .toast {
-          position: fixed;
-          bottom: 24px;
-          left: 50%;
-          transform: translateX(-50%);
-          z-index: 999;
-          padding: 10px 20px;
-          border-radius: 20px;
-          font-family: 'Cormorant SC', serif;
-          font-size: 13px;
-          font-style: italic;
-          letter-spacing: 0.06em;
-          pointer-events: none;
-          animation: fadeIn 0.3s ease;
-          white-space: nowrap;
-        }
-        .toast-info {
-          background: rgba(10,40,28,0.92);
-          border: 1px solid rgba(212,175,55,0.35);
-          color: #c8b97a;
-        }
-        .toast-success {
-          background: rgba(10,40,28,0.92);
-          border: 1px solid rgba(94,196,122,0.5);
-          color: #5ec47a;
-        }
-        .toast-error {
-          background: rgba(40,10,10,0.92);
-          border: 1px solid rgba(220,80,80,0.5);
-          color: #e07070;
-        }
-
-        /* ── SEARCH INPUT ── */
-        .player-search {
-          width: 100%;
-          padding: 9px 14px;
-          margin-bottom: 10px;
-          box-sizing: border-box;
-          border-radius: 5px;
-          border: 1px solid rgba(212,175,55,0.25);
-          background: rgba(0,0,0,0.25);
-          color: #f5f0e0;
-          font-family: 'Cormorant SC', serif;
-          font-size: 15px;
-          font-style: italic;
-          letter-spacing: 0.04em;
-          outline: none;
-          transition: border-color 0.2s;
-        }
-        .player-search::placeholder { color: rgba(200,185,122,0.45); }
-        .player-search:focus { border-color: rgba(212,175,55,0.55); }
-
-        /* ── PICKER BADGE ── */
-        .picker-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 10px;
-          margin-bottom: 10px;
-          font-family: 'Cormorant SC', serif;
-          font-size: 13px;
-          font-style: italic;
-          color: #8aab93;
-          letter-spacing: 0.05em;
-        }
-        .picker-badge-count {
-          color: #d4af37;
-          font-weight: 700;
-          font-size: 15px;
-        }
-        .picker-badge-over { color: #e07070; }
-
-        /* ── CUT LINE ── */
-        .cut-line-row {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 6px 0;
-          margin: 4px 0;
-        }
-        .cut-line-label {
-          font-family: 'Cormorant SC', serif;
-          font-size: 11px;
-          font-style: italic;
-          color: #e07070;
-          letter-spacing: 0.1em;
-          white-space: nowrap;
-          opacity: 0.8;
-        }
-        .cut-line-rule {
-          flex: 1;
-          height: 1px;
-          background: linear-gradient(to right, rgba(224,112,112,0.5), transparent);
-        }
-
-        /* ── MOBILE RESPONSIVE ── */
-        @media (max-width: 768px) {
-          .two-col {
-            flex-direction: column !important;
-            gap: 0 !important;
-          }
-          .two-col-left,
-          .two-col-right {
-            width: 100% !important;
-          }
-          .two-col-divider { display: none !important; }
-          .masters-title-word {
-            font-size: clamp(52px, 15vw, 80px) !important;
-          }
-          .masters-title-year {
-            font-size: clamp(18px, 5vw, 28px) !important;
-          }
-        }
-
-        /* ── TICKER ── */
-        .ticker-wrap {
-          width: 100%;
-          overflow: hidden;
-          background: rgba(0,0,0,0.45);
-          border-bottom: 1px solid rgba(212,175,55,0.3);
-          border-top: 1px solid rgba(212,175,55,0.15);
-          position: relative;
-        }
-        .ticker-wrap::before, .ticker-wrap::after {
-          content: '';
-          position: absolute;
-          top: 0; bottom: 0;
-          width: 60px;
-          z-index: 2;
-          pointer-events: none;
-        }
-        .ticker-wrap::before { left: 0; background: linear-gradient(to right, rgba(0,0,0,0.6), transparent); }
-        .ticker-wrap::after  { right: 0; background: linear-gradient(to left,  rgba(0,0,0,0.6), transparent); }
-        .ticker-label {
-          position: absolute; left: 0; top: 0; bottom: 0; z-index: 3;
-          display: flex; align-items: center;
-          padding: 0 14px 0 12px;
-          background: rgba(0,0,0,0.6);
-          border-right: 1px solid rgba(212,175,55,0.3);
-          font-family: 'Cormorant SC', 'Cormorant', serif;
-          font-size: 13px; font-style: italic;
-          color: #d4af37; letter-spacing: 0.12em;
-          white-space: nowrap; gap: 7px;
-        }
-        .ticker-live-dot {
-          width: 6px; height: 6px; border-radius: 50%;
-          background: #e05252;
-          animation: pulse 2s ease-in-out infinite; flex-shrink: 0;
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50%       { opacity: 0.4; transform: scale(0.75); }
-        }
-        .ticker-track {
-          display: flex; width: max-content;
-          animation: ticker-scroll 60s linear infinite;
-          padding-left: 110px;
-        }
-        .ticker-track:hover { animation-play-state: paused; }
-        @keyframes ticker-scroll {
-          0%   { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-        .ticker-item {
-          display: inline-flex; align-items: center; gap: 6px;
-          padding: 10px 20px 10px 0;
-          font-family: 'Cormorant SC', 'Cormorant', serif;
-          font-size: 15px; white-space: nowrap; color: #e8dfc0;
-        }
-        .ticker-pos  { font-size: 13px; color: #8aab93; font-style: italic; min-width: 26px; }
-        .ticker-name { font-weight: 600; color: #f0e8cc; }
-        .ticker-score-under { color: #5ec47a; font-weight: 700; }
-        .ticker-score-even  { color: #c8b97a; }
-        .ticker-score-over  { color: #e07070; font-weight: 700; }
-        .ticker-divider { color: rgba(212,175,55,0.35); padding: 0 6px 0 20px; font-size: 13px; }
-
-        /* ── HEADER ── */
-        .masters-title {
-          font-family: 'Cormorant SC', 'Cormorant', 'Times New Roman', serif;
-          font-size: clamp(42px, 5.5vw, 70px);
-          font-weight: 700; font-style: italic;
-          color: #d4af37; letter-spacing: 0.05em; line-height: 1.05; margin: 0;
-          text-shadow: 0 1px 0 rgba(0,0,0,0.5), 0 0 40px rgba(212,175,55,0.25);
-        }
-        .masters-subtitle {
-          font-family: 'Cormorant SC', 'Cormorant', 'Times New Roman', serif;
-          font-size: clamp(15px, 1.8vw, 19px);
-          font-weight: 400; font-style: italic;
-          color: #c8b97a; letter-spacing: 0.15em; margin: 0;
-        }
-        .masters-year {
-          font-family: 'Cormorant SC', 'Cormorant', 'Times New Roman', serif;
-          font-size: clamp(13px, 1.4vw, 16px);
-          font-weight: 600; color: #8aab93;
-          letter-spacing: 0.5em; text-transform: uppercase; margin: 0;
-        }
-        .masters-rule {
-          border: none; height: 1px;
-          background: linear-gradient(to right, transparent, rgba(212,175,55,0.15) 15%, rgba(212,175,55,0.55) 50%, rgba(212,175,55,0.15) 85%, transparent);
-          margin: 0;
-        }
-        .masters-rule-thin {
-          border: none; height: 1px;
-          background: linear-gradient(to right, transparent, rgba(212,175,55,0.08) 15%, rgba(212,175,55,0.25) 50%, rgba(212,175,55,0.08) 85%, transparent);
-          margin: 0;
-        }
-
-        /* ── AUGUSTA TEXTURE OVERLAY ── */
-        .augusta-bg::before {
-          content: '';
-          position: fixed;
-          inset: 0;
-          pointer-events: none;
-          z-index: 0;
-          background-image:
-            repeating-linear-gradient(
-              0deg,
-              transparent,
-              transparent 3px,
-              rgba(0,0,0,0.04) 3px,
-              rgba(0,0,0,0.04) 4px
-            ),
-            repeating-linear-gradient(
-              90deg,
-              transparent,
-              transparent 8px,
-              rgba(255,255,255,0.012) 8px,
-              rgba(255,255,255,0.012) 9px
-            );
-        }
-        .augusta-bg > * { position: relative; z-index: 1; }
-
-        /* ── SCORECARD LEADERBOARD ── */
-        .scorecard-table {
-          width: 100%; border-collapse: collapse;
-          font-family: 'Cormorant SC', 'Cormorant', serif; font-size: 13px;
-        }
-        .scorecard-table thead tr {
-          background: rgba(0,0,0,0.3);
-          border-bottom: 1px solid rgba(212,175,55,0.4);
-        }
-        .scorecard-table th {
-          padding: 7px 8px; color: #d4af37;
-          font-size: 10px; font-weight: 700;
-          letter-spacing: 1.2px; text-transform: uppercase;
-          text-align: center; font-style: normal;
-        }
-        .scorecard-table th:first-child,
-        .scorecard-table th:nth-child(2) { text-align: left; }
-        .scorecard-table tbody tr {
-          border-bottom: 1px solid rgba(255,255,255,0.05);
-          transition: background 0.15s;
-        }
-        .scorecard-table tbody tr:hover { background: rgba(255,255,255,0.03); }
-        .scorecard-table tbody tr.row-first {
-          background: linear-gradient(90deg, rgba(212,175,55,0.22), rgba(212,175,55,0.08));
-          border-bottom: 1px solid rgba(212,175,55,0.3);
-        }
-        .scorecard-table td { padding: 0; vertical-align: top; }
-        .scorecard-pos {
-          padding: 10px 6px 10px 8px; color: #8aab93;
-          font-size: 12px; font-style: italic;
-          white-space: nowrap; width: 24px;
-        }
-        .row-first .scorecard-pos { color: #d4af37; }
-        .scorecard-name-col { padding: 6px 8px; }
-        .scorecard-entry-name {
-          font-size: 14px; font-weight: 700;
-          color: #f7e7a1; letter-spacing: 0.03em;
-        }
-        .row-first .scorecard-entry-name { color: #0b3d2e; }
-        .scorecard-players {
-          display: flex; flex-wrap: wrap; gap: 2px 8px; margin-top: 3px;
-        }
-        .scorecard-player-chip {
-          font-size: 11px; font-style: italic; color: #8aab93; white-space: nowrap;
-        }
-        .row-first .scorecard-player-chip { color: #2a5a3a; }
-        .chip-eagle { color: #d4af37 !important; font-weight: 700; }
-        .chip-birdie { color: #5ec47a !important; }
-        .chip-bogey { color: #e07070 !important; }
-        .chip-pos { color: #a8c4ae !important; font-size: 10px; }
-        .scorecard-pts {
-          padding: 10px 10px 10px 4px; text-align: right;
-          font-size: 16px; font-weight: 700; color: #d4af37; white-space: nowrap;
-        }
-        .row-first .scorecard-pts { color: #0b3d2e; }
-        .scorecard-pts-label {
-          font-size: 9px; font-weight: 400; opacity: 0.7;
-          letter-spacing: 0.5px; text-transform: uppercase; display: block;
-        }
-
-        .share-btn {
-          display: inline-flex; align-items: center; gap: 8px;
-          background: rgba(0,0,0,0.3);
-          border: 1px solid rgba(212,175,55,0.35); border-radius: 20px;
-          padding: 6px 16px;
-          font-family: 'Cormorant SC', 'Cormorant', serif;
-          font-size: 12px; font-style: italic; color: #c8b97a;
-          letter-spacing: 0.05em; cursor: pointer; transition: all 0.2s ease;
-        }
-        .share-btn:hover { background: rgba(212,175,55,0.12); border-color: rgba(212,175,55,0.6); color: #f0e8cc; }
-        .share-btn.copied { background: rgba(94,196,122,0.15); border-color: rgba(94,196,122,0.5); color: #5ec47a; }
-        .share-icon { width: 12px; height: 12px; flex-shrink: 0; }
-
-        /* ── PLAYER PICKER ── */
-        .picker-section {
-          background: linear-gradient(145deg, #163d2c, #0c2318);
-          border: 1px solid rgba(212,175,55,0.15);
-          border-radius: 8px;
-          padding: 16px;
-          margin-bottom: 16px;
-          box-shadow: 0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04);
-        }
-        .picker-header {
-          display: flex;
-          align-items: baseline;
-          justify-content: space-between;
-          margin-bottom: 4px;
-        }
-        .picker-title {
-          font-family: 'Cormorant SC', 'Cormorant', 'Times New Roman', serif;
-          font-size: clamp(18px, 2vw, 22px);
-          font-weight: 700;
-          font-style: italic;
-          color: #f7e7a1;
-          letter-spacing: 0.04em;
-          margin: 0;
-        }
-        .picker-salary-cap {
-          font-family: 'Cormorant SC', 'Cormorant', serif;
-          font-size: 14px;
-          font-style: italic;
-          color: #8aab93;
-          letter-spacing: 0.08em;
-        }
-        .picker-rule {
-          border: none; height: 1px; margin: 10px 0 14px;
-          background: linear-gradient(to right, rgba(212,175,55,0.5), rgba(212,175,55,0.08) 80%, transparent);
-        }
-        .player-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 9px 12px;
-          margin: 5px 0;
-          border-radius: 5px;
-          border: 1px solid rgba(255,255,255,0.1);
-          background: rgba(255,255,255,0.03);
-          cursor: pointer;
-          transition: all 0.18s ease;
-          font-family: 'Cormorant SC', 'Cormorant', serif;
-          font-size: 17px;
-        }
-        .player-row:hover:not(.player-row--locked):not(.player-row--selected) {
-          background: rgba(255,255,255,0.07);
-          border-color: rgba(212,175,55,0.25);
-          transform: translateX(3px);
-        }
-        .player-row--selected {
-          background: rgba(212,175,55,0.18);
-          border-color: rgba(212,175,55,0.6);
-          transform: translateX(3px);
-        }
-        .player-row--selected .player-name { color: #f7e7a1; font-weight: 700; }
-        .player-row--selected .player-salary { color: #d4af37; }
-        .player-row--full { opacity: 0.38; cursor: default; }
-        .player-row--locked { cursor: not-allowed; opacity: 0.5; }
-        .player-row--cut { opacity: 0.45; }
-        .player-row--cut .player-name { text-decoration: line-through; text-decoration-color: rgba(224,112,112,0.5); }
-        .player-name { color: #f5f0e0; font-style: italic; letter-spacing: 0.02em; font-size: 17px; }
-        .player-salary { color: #a8c4ae; font-size: 15px; font-style: normal; letter-spacing: 0.05em; }
-        .player-check {
-          width: 16px; height: 16px; margin-right: 8px;
-          border-radius: 50%; background: #d4af37;
-          display: inline-flex; align-items: center; justify-content: center;
-          flex-shrink: 0;
-        }
-
-        /* ── LOCK BANNER ── */
-        .lock-banner {
-          background: rgba(180,60,60,0.2);
-          border: 1px solid rgba(220,80,80,0.4);
-          border-radius: 6px;
-          padding: 12px 16px;
-          text-align: center;
-          font-family: 'Cormorant SC', 'Cormorant', serif;
-          font-size: 13px;
-          font-style: italic;
-          color: #e07070;
-          margin-bottom: 16px;
-          letter-spacing: 0.05em;
-        }
-        .countdown-banner {
-          background: rgba(212,175,55,0.08);
-          border: 1px solid rgba(212,175,55,0.25);
-          border-radius: 6px;
-          padding: 10px 16px;
-          text-align: center;
-          font-family: 'Cormorant SC', 'Cormorant', serif;
-          font-size: 12px;
-          font-style: italic;
-          color: #c8b97a;
-          margin-bottom: 14px;
-          letter-spacing: 0.05em;
-        }
-        .countdown-time {
-          font-size: 15px;
-          font-weight: 700;
-          color: #d4af37;
-          font-style: normal;
-          letter-spacing: 0.08em;
-        }
-
-        /* ── DRAFT BUTTONS ── */
-        .draft-btn {
-          display: inline-flex; align-items: center; gap: 6px;
-          background: rgba(0,0,0,0.25);
-          border: 1px solid rgba(212,175,55,0.3);
-          border-radius: 4px;
-          padding: 7px 14px;
-          font-family: 'Cormorant SC', 'Cormorant', serif;
-          font-size: 12px; font-style: italic;
-          color: #c8b97a; cursor: pointer;
-          transition: all 0.2s; letter-spacing: 0.04em;
-        }
-        .draft-btn:hover { background: rgba(212,175,55,0.1); color: #f0e8cc; border-color: rgba(212,175,55,0.5); }
-        .draft-btn.saved { background: rgba(94,196,122,0.12); border-color: rgba(94,196,122,0.4); color: #5ec47a; }
-        .draft-btn.clear { border-color: rgba(220,80,80,0.3); color: #c47070; }
-        .draft-btn.clear:hover { background: rgba(220,80,80,0.1); border-color: rgba(220,80,80,0.5); color: #e07070; }
-      `}</style>
 
       <div style={{
         minHeight: "100vh",
@@ -956,7 +505,7 @@ export default function App() {
         <div className="ticker-wrap anim-ticker">
           <div className="ticker-label">
             <span className="ticker-live-dot" />
-            Live
+            {tickerPlayers.length > 0 && tickerPlayers[0]?.isTeeTime ? "Tee Times" : "Live"}
           </div>
           <div className="ticker-track">
             {[...tickerContent, ...tickerContent].map((p, i) => (
@@ -964,7 +513,7 @@ export default function App() {
                 <span className="ticker-item">
                   <span className="ticker-pos">{p.pos}</span>
                   <span className="ticker-name">{p.name}</span>
-                  {p.score !== null && p.score !== undefined && (
+                  {!p.isTeeTime && p.score !== null && p.score !== undefined && (
                     <span className={p.score < 0 ? "ticker-score-under" : p.score === 0 ? "ticker-score-even" : "ticker-score-over"}>
                       {formatScore(p.score)}
                     </span>
