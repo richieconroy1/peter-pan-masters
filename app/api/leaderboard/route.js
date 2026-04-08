@@ -17,24 +17,31 @@ export async function GET() {
     const leaderboard = await lbRes.json();
     const scorecards = scRes.ok ? await scRes.json() : null;
 
-    // If tournament hasn't started yet (empty leaderboard), fetch tee times
+    // Check if tournament has live data
     const hasLiveData = (leaderboard?.leaderboard?.length || 0) > 0;
     let teeTimes = null;
 
+    // If no live data yet, fetch tee times for round 1
     if (!hasLiveData) {
-      // Try round 1 tee times
-      const ttRes = await fetch(`${SR_BASE}/rounds/1/tee_times.json?api_key=${apiKey}`);
-      if (ttRes.ok) {
-        const ttData = await ttRes.json();
-        // Flatten groups into a simple array of { tee_time, name }
-        if (ttData?.groups) {
-          teeTimes = ttData.groups.flatMap((g) =>
-            (g.players || []).map((p) => ({
-              tee_time: g.tee_time,
-              name: `${p.first_name || ""} ${p.last_name || ""}`.trim(),
-            }))
-          );
+      try {
+        const ttRes = await fetch(
+          `${SR_BASE}/rounds/1/tee_times.json?api_key=${apiKey}`
+        );
+        if (ttRes.ok) {
+          const ttData = await ttRes.json();
+          if (ttData?.groups) {
+            // Flatten into simple array of { tee_time, name }
+            teeTimes = ttData.groups.flatMap((g) =>
+              (g.players || []).map((p) => ({
+                tee_time: g.tee_time,
+                name: `${p.first_name || ""} ${p.last_name || ""}`.trim(),
+              }))
+            );
+          }
         }
+      } catch (ttErr) {
+        console.error("Tee times fetch failed:", ttErr);
+        // Non-fatal — just return without tee times
       }
     }
 
