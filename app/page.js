@@ -196,9 +196,9 @@ export default function App() {
   const fetchLiveScores = async () => {
     try {
       showToast("Updating scores...", "info");
-      const res = await fetch("/api/leaderboard");
-      if (res.status === 429) throw new Error("quota_exceeded"); if (!res.ok) throw new Error("Proxy fetch failed");
-      const { leaderboard: lbData, scorecards: scData, teeTimes, hasLiveData } = await res.json();
+      throw new Error("force_espn"); // temp bypass SR
+      if (!res.ok) throw new Error("Proxy fetch failed");
+      const { leaderboard: lbData, scorecards: scData } = await res.json();
 
       // Build scorecard lookup keyed by player id
       const scorecardMap = {};
