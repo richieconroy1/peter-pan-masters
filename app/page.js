@@ -219,12 +219,14 @@ export default function App() {
       leaderboard.forEach((p) => {
         const fullName = `${p.first_name} ${p.last_name}`;
         const position = p.position || 99;
-        let birdies=0,pars=0,bogeys=0,doubles=0,eagles=0,tripleOrWorse=0,holeInOne=0;
+        let birdies=0,pars=0,bogeys=0,doubles=0,eagles=0,double_eagles=0,tripleOrWorse=0,holeInOne=0;
         let bogeyFreeBonus=0,allRoundsUnder70=0;
         const completedRoundScores = [];
         (p.rounds || []).forEach((round) => {
           if (!round.thru || round.thru === 0) return;
+          // SR: eagles field = regular eagles (-2), other_scores covers double eagles (-3+)
           eagles += round.eagles || 0;
+          double_eagles += round.double_eagles || 0;
           birdies += round.birdies || 0;
           pars += round.pars || 0;
           bogeys += round.bogeys || 0;
@@ -237,7 +239,7 @@ export default function App() {
           }
         });
         if (completedRoundScores.length === 4 && completedRoundScores.every(s => s < 70)) allRoundsUnder70 = 1;
-        scores[fullName] = { position, birdies, eagles, pars, bogeys, double_bogeys: doubles, triple_bogeys: tripleOrWorse, hole_in_one: holeInOne, birdie_streak_bonus: 0, bogey_free_bonus: bogeyFreeBonus, all_rounds_under_70_bonus: allRoundsUnder70 };
+        scores[fullName] = { position, birdies, eagles, double_eagles, pars, bogeys, double_bogeys: doubles, triple_bogeys: tripleOrWorse, hole_in_one: holeInOne, birdie_streak_bonus: 0, bogey_free_bonus: bogeyFreeBonus, all_rounds_under_70_bonus: allRoundsUnder70 };
       });
       setLiveData(scores);
 
@@ -274,7 +276,7 @@ export default function App() {
           if (!pName) return;
           const liveRank = p.status?.position?.displayName;
           const position = liveRank&&liveRank!=="-"&&liveRank!=="0" ? parseInt(liveRank.replace("T",""))||99 : parseInt((p.rank||"99").replace("T",""))||99;
-          let birdies=0,pars=0,bogeys=0,doubles=0,eagles=0,holeInOne=0;
+          let birdies=0,pars=0,bogeys=0,doubles=0,eagles=0,double_eagles=0,holeInOne=0;
           (p.linescores||[]).forEach((round) => {
             (round.holes||[]).forEach((h) => {
               const hScore=h.score??h.value??null;
@@ -289,7 +291,7 @@ export default function App() {
               if(hScore===1&&hPar>=3)holeInOne++;
             });
           });
-          espnScores[pName] = { position, birdies, eagles, pars, bogeys, double_bogeys: doubles, triple_bogeys: 0, hole_in_one: holeInOne, birdie_streak_bonus: 0, bogey_free_bonus: 0, all_rounds_under_70_bonus: 0 };
+          espnScores[pName] = { position, birdies, eagles, double_eagles, pars, bogeys, double_bogeys: doubles, triple_bogeys: 0, hole_in_one: holeInOne, birdie_streak_bonus: 0, bogey_free_bonus: 0, all_rounds_under_70_bonus: 0 };
         });
         setLiveData(espnScores);
       } catch(e) { console.error("ESPN also failed", e); }
