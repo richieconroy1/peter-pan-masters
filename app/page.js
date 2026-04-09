@@ -752,7 +752,7 @@ export default function App() {
         .row-first .scorecard-pos { color: #d4af37; }
         .scorecard-name-col { padding: 6px 8px; }
         .scorecard-entry-name {
-          font-size: 17px; font-weight: 700;
+          font-size: 20px; font-weight: 700;
           font-style: italic;
           color: #f7e7a1; letter-spacing: 0.02em;
           font-family: 'Cormorant SC', 'Cormorant', serif;
@@ -762,7 +762,7 @@ export default function App() {
           display: flex; flex-wrap: wrap; gap: 2px 8px; margin-top: 3px;
         }
         .scorecard-player-chip {
-          font-size: 14px; font-style: italic; color: #a8c4ae; white-space: nowrap;
+          font-size: 16px; font-style: italic; color: #a8c4ae; white-space: nowrap;
           font-family: 'Cormorant SC', 'Cormorant', serif;
           letter-spacing: 0.02em;
         }
