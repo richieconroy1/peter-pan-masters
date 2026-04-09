@@ -689,7 +689,7 @@ export default function App() {
         }
         .ticker-track {
           display: flex; width: max-content;
-          animation: ticker-scroll 60s linear infinite;
+          animation: ticker-scroll 120s linear infinite;
           padding-left: 110px;
         }
         .ticker-track:hover { animation-play-state: paused; }
