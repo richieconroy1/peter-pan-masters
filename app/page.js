@@ -212,7 +212,8 @@ export default function App() {
           let birdieStreakBonus = 0;
           (p.rounds || []).forEach((round) => {
             const holes = round.holes || [];
-            if (holes.length < 18) return;
+            if (holes.length === 0) return;
+            // Fire on any round with holes played, not just complete rounds
             let streak = 0, streakFound = false;
             holes.forEach((h) => {
               const diff = (h.strokes || 0) - (h.par || 0);
