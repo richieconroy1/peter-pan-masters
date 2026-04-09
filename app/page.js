@@ -589,7 +589,7 @@ export default function App() {
         /* ── MOBILE RESPONSIVE ── */
         @media (max-width: 768px) {
           .two-col {
-            flex-direction: column !important;
+            flex-direction: column-reverse !important;
             gap: 0 !important;
           }
           .two-col-left,
