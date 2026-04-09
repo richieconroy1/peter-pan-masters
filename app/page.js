@@ -739,8 +739,8 @@ export default function App() {
         }
         .scorecard-table tbody tr:hover { background: rgba(255,255,255,0.03); }
         .scorecard-table tbody tr.row-first {
-          background: linear-gradient(90deg, rgba(212,175,55,0.22), rgba(212,175,55,0.08));
-          border-bottom: 1px solid rgba(212,175,55,0.3);
+          background: transparent;
+          border-bottom: 1px solid rgba(212,175,55,0.15);
         }
         .scorecard-table td { padding: 0; vertical-align: top; }
         .scorecard-pos {
@@ -756,7 +756,7 @@ export default function App() {
           color: #f7e7a1; letter-spacing: 0.02em;
           font-family: 'Cormorant SC', 'Cormorant', serif;
         }
-        .row-first .scorecard-entry-name { color: #0b3d2e; }
+        .row-first .scorecard-entry-name { color: #f7e7a1; }
         .scorecard-players {
           display: flex; flex-wrap: wrap; gap: 2px 8px; margin-top: 3px;
         }
@@ -765,7 +765,7 @@ export default function App() {
           font-family: 'Cormorant SC', 'Cormorant', serif;
           letter-spacing: 0.02em;
         }
-        .row-first .scorecard-player-chip { color: #2a5a3a; }
+        .row-first .scorecard-player-chip { color: #a8c4ae; }
         .chip-eagle { color: #d4af37 !important; font-weight: 700; }
         .chip-birdie { color: #5ec47a !important; }
         .chip-bogey { color: #e07070 !important; }
@@ -774,7 +774,7 @@ export default function App() {
           padding: 10px 10px 10px 4px; text-align: right;
           font-size: 16px; font-weight: 700; color: #d4af37; white-space: nowrap;
         }
-        .row-first .scorecard-pts { color: #0b3d2e; }
+        .row-first .scorecard-pts { color: #d4af37; }
         .scorecard-pts-label {
           font-size: 9px; font-weight: 400; opacity: 0.7;
           letter-spacing: 0.5px; text-transform: uppercase; display: block;
