@@ -741,7 +741,7 @@ export default function App() {
         .scorecard-table tbody tr:hover { background: rgba(255,255,255,0.03); }
         .scorecard-table tbody tr.row-first {
           background: transparent;
-          border-bottom: 1px solid rgba(212,175,55,0.15);
+          border-bottom: 1px solid rgba(255,255,255,0.05);
         }
         .scorecard-table td { padding: 0; vertical-align: top; }
         .scorecard-pos {
@@ -749,7 +749,7 @@ export default function App() {
           font-size: 12px; font-style: italic;
           white-space: nowrap; width: 24px;
         }
-        .row-first .scorecard-pos { color: #d4af37; }
+        .row-first .scorecard-pos { color: #8aab93; }
         .scorecard-name-col { padding: 6px 8px; }
         .scorecard-entry-name {
           font-size: 20px; font-weight: 700;
