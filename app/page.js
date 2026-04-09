@@ -23,6 +23,7 @@ export default function App() {
   const [draftSaved, setDraftSaved] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
   const [search, setSearch] = useState("");
+  const [selectedEntrant, setSelectedEntrant] = useState(null);
   const [toast, setToast] = useState(null);
 
   const poolId = "peter-pan-masters-2026";
@@ -739,8 +740,8 @@ export default function App() {
         }
         .scorecard-table tbody tr:hover { background: rgba(255,255,255,0.03); }
         .scorecard-table tbody tr.row-first {
-          background: linear-gradient(90deg, rgba(212,175,55,0.22), rgba(212,175,55,0.08));
-          border-bottom: 1px solid rgba(212,175,55,0.3);
+          background: transparent;
+          border-bottom: 1px solid rgba(212,175,55,0.15);
         }
         .scorecard-table td { padding: 0; vertical-align: top; }
         .scorecard-pos {
@@ -751,17 +752,21 @@ export default function App() {
         .row-first .scorecard-pos { color: #d4af37; }
         .scorecard-name-col { padding: 6px 8px; }
         .scorecard-entry-name {
-          font-size: 14px; font-weight: 700;
-          color: #f7e7a1; letter-spacing: 0.03em;
+          font-size: 17px; font-weight: 700;
+          font-style: italic;
+          color: #f7e7a1; letter-spacing: 0.02em;
+          font-family: 'Cormorant SC', 'Cormorant', serif;
         }
-        .row-first .scorecard-entry-name { color: #0b3d2e; }
+        .row-first .scorecard-entry-name { color: #f7e7a1; }
         .scorecard-players {
           display: flex; flex-wrap: wrap; gap: 2px 8px; margin-top: 3px;
         }
         .scorecard-player-chip {
-          font-size: 11px; font-style: italic; color: #8aab93; white-space: nowrap;
+          font-size: 14px; font-style: italic; color: #a8c4ae; white-space: nowrap;
+          font-family: 'Cormorant SC', 'Cormorant', serif;
+          letter-spacing: 0.02em;
         }
-        .row-first .scorecard-player-chip { color: #2a5a3a; }
+        .row-first .scorecard-player-chip { color: #a8c4ae; }
         .chip-eagle { color: #d4af37 !important; font-weight: 700; }
         .chip-birdie { color: #5ec47a !important; }
         .chip-bogey { color: #e07070 !important; }
@@ -770,7 +775,7 @@ export default function App() {
           padding: 10px 10px 10px 4px; text-align: right;
           font-size: 16px; font-weight: 700; color: #d4af37; white-space: nowrap;
         }
-        .row-first .scorecard-pts { color: #0b3d2e; }
+        .row-first .scorecard-pts { color: #d4af37; }
         .scorecard-pts-label {
           font-size: 9px; font-weight: 400; opacity: 0.7;
           letter-spacing: 0.5px; text-transform: uppercase; display: block;
@@ -1273,109 +1278,55 @@ export default function App() {
 
               {/* 2. YOUR LINEUP */}
               <div style={sectionStyle}>
-                <h3 style={sectionSubheading}>View a Lineup</h3>
-
-                {/* Entrant dropdown */}
-                <select
-                  value={selectedEntrant || ""}
-                  onChange={(e) => setSelectedEntrant(e.target.value || null)}
-                  style={{
-                    width: "100%",
-                    padding: "10px 14px",
-                    marginBottom: "14px",
-                    boxSizing: "border-box",
-                    borderRadius: "5px",
-                    border: "1px solid rgba(212,175,55,0.3)",
-                    background: "rgba(0,0,0,0.3)",
-                    color: "#f5f0e0",
-                    fontFamily: "'Cormorant SC', 'Cormorant', serif",
-                    fontSize: "16px",
-                    fontStyle: "italic",
-                    letterSpacing: "0.04em",
-                    outline: "none",
-                    cursor: "pointer",
-                    appearance: "none",
-                  }}
-                >
-                  <option value="">— Select an entrant —</option>
-                  {scored.map((e) => (
-                    <option key={e.id} value={e.id}>
-                      {e.name} · {e.score.toFixed(1)} pts
-                    </option>
-                  ))}
-                </select>
-
-                {/* Selected lineup */}
-                {selectedEntrant && (() => {
-                  const entry = scored.find((e) => e.id === selectedEntrant);
-                  if (!entry) return null;
-                  return (
-                    <div>
-                      <div style={{
-                        fontFamily: "'Cormorant SC', serif",
-                        fontSize: "13px",
-                        fontStyle: "italic",
-                        color: "#8aab93",
-                        marginBottom: "10px",
-                      }}>
-                        {(entry.players || []).length}/6 players selected
-                      </div>
-                      {(entry.playerStats || []).map((p, j) => {
-                        const pts = p.points;
-                        const s = p.stats;
-                        return (
-                          <div key={j} style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            padding: "8px 4px",
-                            borderBottom: "1px solid rgba(255,255,255,0.06)",
-                            fontFamily: "'Cormorant SC', serif",
-                          }}>
-                            <div>
-                              <span style={{ fontSize: "17px", fontStyle: "italic", color: "#f0e8cc" }}>
-                                {p.name}
-                              </span>
-                              {s && (
-                                <span style={{ marginLeft: "8px", fontSize: "13px", color: "#8aab93", fontStyle: "italic" }}>
-                                  {s.eagles > 0 && `🦅${s.eagles} `}
-                                  {s.birdies > 0 && `🐦${s.birdies} `}
-                                  {s.bogeys > 0 && `${s.bogeys}bog `}
-                                  {s.position && s.position <= 50 ? `Pos ${s.position}` : s.position > 50 ? "CUT" : ""}
-                                </span>
-                              )}
-                            </div>
-                            <span style={{
-                              fontSize: "16px",
-                              fontWeight: 700,
-                              color: pts > 0 ? "#d4af37" : pts < 0 ? "#e07070" : "#8aab93",
-                            }}>
-                              {s ? `${pts > 0 ? "+" : ""}${pts.toFixed(1)}` : "–"}
-                            </span>
-                          </div>
-                        );
-                      })}
-                      <div style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        marginTop: "10px",
-                        paddingTop: "10px",
-                        borderTop: "1px solid rgba(212,175,55,0.2)",
-                        fontFamily: "'Cormorant SC', serif",
-                        fontStyle: "italic",
-                        fontSize: "15px",
-                      }}>
-                        <span style={{ color: "#c8b97a" }}>Total</span>
-                        <span style={{ color: "#d4af37", fontWeight: 700 }}>{entry.score.toFixed(1)} pts</span>
-                      </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                  <h3 style={sectionSubheading}>
+                    Your Lineup ({lineup.length}/6)
+                    {lineup.length === 6 && (
+                      <span style={{ marginLeft: "10px", color: "#d4af37", fontSize: "13px" }}>✅ Full</span>
+                    )}
+                  </h3>
+                  {/* Draft buttons */}
+                  {!isLocked && (
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <button
+                        onClick={saveDraft}
+                        disabled={lineup.length === 0}
+                        className={`draft-btn${draftSaved ? " saved" : ""}`}
+                        style={{ opacity: lineup.length === 0 ? 0.4 : 1 }}
+                      >
+                        {draftSaved ? "✓ Saved" : "Save draft"}
+                      </button>
+                      {hasDraft && (
+                        <button onClick={clearDraft} className="draft-btn clear">
+                          Clear
+                        </button>
+                      )}
                     </div>
-                  );
-                })()}
+                  )}
+                </div>
 
-                {!selectedEntrant && (
-                  <p style={{ opacity: 0.45, fontSize: "13px", fontStyle: "italic", fontFamily: "'Cormorant SC', serif", margin: 0 }}>
-                    Select an entrant above to view their full lineup and points.
-                  </p>
+                {hasDraft && lineup.length > 0 && (
+                  <div style={{
+                    fontSize: "11px", fontStyle: "italic", color: "#8aab93",
+                    marginBottom: "10px", letterSpacing: "0.04em",
+                    fontFamily: "'Cormorant SC', 'Cormorant', serif",
+                  }}>
+                    Draft saved — your picks will be here when you return.
+                  </div>
+                )}
+
+                {lineup.length === 0 ? (
+                  <p style={{ opacity: 0.5, fontSize: "13px", margin: 0 }}>No players selected yet.</p>
+                ) : (
+                  lineup.map((p) => (
+                    <div key={p.name} style={{
+                      display: "flex", justifyContent: "space-between",
+                      padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,0.08)",
+                    }}>
+                      <span>{p.name}</span>
+                      <span style={{ color: "#d4af37" }}>${p.salary.toLocaleString()}</span>
+                    </div>
+                  ))
                 )}
               </div>
 
