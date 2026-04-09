@@ -196,58 +196,9 @@ export default function App() {
   const fetchLiveScores = async () => {
     try {
       showToast("Updating scores...", "info");
-      const res = await fetch("https://site.api.espn.com/apis/site/v2/sports/golf/leaderboard?tournamentId=401811941");
-      if (!res.ok) throw new Error("ESPN fetch failed");
-      const data = await res.json();
-      const playersData = data?.events?.[0]?.competitions?.[0]?.competitors || [];
-      const status = data?.events?.[0]?.status?.type?.state || "pre";
-      if (status === "pre") {
-        const ticker = playersData
-          .filter((p) => p.status?.type?.name !== "STATUS_WITHDRAWN")
-          .sort((a, b) => (a.status?.teeTime || "").localeCompare(b.status?.teeTime || ""))
-          .map((p) => ({
-            pos: p.status?.teeTime ? new Date(p.status.teeTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "America/New_York" }) : "–",
-            name: p.athlete?.displayName || "Unknown",
-            score: null, isTeeTime: true,
-          }));
-        setTickerPlayers(ticker);
-        return;
-      }
-      const ticker = playersData
-        .filter((p) => p.status?.type?.name !== "STATUS_WITHDRAWN")
-        .sort((a, b) => (parseInt(a.rank) || 99) - (parseInt(b.rank) || 99))
-        .slice(0, 50)
-        .map((p) => ({
-          pos: p.rank || "–",
-          name: p.athlete?.displayName || "Unknown",
-          score: (!isNaN(Number(p.score?.value)) && p.score?.value != null) ? Number(p.score?.value) : null,
-          thru: p.status?.thru === 18 ? "F" : p.status?.thru > 0 ? "Thru " + p.status?.thru : null,
-        }));
-      setTickerPlayers(ticker);
-      const scores = {};
-      playersData.forEach((p) => {
-        const pName = p.athlete?.displayName;
-        if (!pName) return;
-        const position = parseInt((p.rank || "99").replace("T","")) || 99;
-        let birdies=0,pars=0,bogeys=0,doubles=0,eagles=0;
-        (p.linescores||[]).forEach((round) => {
-          (round.holes||[]).forEach((h) => {
-            if (h.score==null||h.par==null) return;
-            const diff = h.score - h.par;
-            if (diff<=-2) eagles++;
-            else if (diff===-1) birdies++;
-            else if (diff===0) pars++;
-            else if (diff===1) bogeys++;
-            else if (diff===2) doubles++;
-          });
-        });
-        scores[pName] = { position, birdies, eagles, pars, bogeys, double_bogeys: doubles, triple_bogeys: 0, hole_in_one: 0 };
-      });
-      setLiveData(scores);
-      return;
-    } catch(err) { console.error("ESPN failed", err); }
-    try {
-      const _dummy = null; // placeholder
+      const res = await fetch("/api/leaderboard");
+      if (!res.ok) throw new Error("Proxy fetch failed");
+      const { leaderboard: lbData, scorecards: scData } = await res.json();
 
       // Build scorecard lookup keyed by player id
       const scorecardMap = {};
