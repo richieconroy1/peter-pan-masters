@@ -768,7 +768,7 @@ export default function App() {
           display: inline-block;
           padding: 2px 0;
         }
-        .row-first .scorecard-player-chip { color: #a8c4ae; }
+        .row-first .scorecard-player-chip { color: white; }
         .chip-eagle { color: #d4af37 !important; font-weight: 700; }
         .chip-birdie { color: #5ec47a !important; }
         .chip-bogey { color: #e07070 !important; }
