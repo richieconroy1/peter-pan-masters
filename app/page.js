@@ -1222,7 +1222,7 @@ export default function App() {
                                   if (s) {
                                     if (s.eagles > 0) chips.push(<span key="e" className="chip-eagle">🦅×{s.eagles}</span>);
                                     if (s.birdies > 0) chips.push(<span key="b" className="chip-birdie">🐦×{s.birdies}</span>);
-                                    if (s.bogeys > 0) chips.push(<span key="bo" className="chip-bogey">↑{s.bogeys}</span>);
+                                    if (s.bogeys > 0) chips.push(<span key="bo" className="chip-bogey">bog×{s.bogeys}</span>);
                                     if (s.position && s.position <= 50) chips.push(<span key="pos" className="chip-pos">T{s.position}</span>);
                                   }
                                   return (
