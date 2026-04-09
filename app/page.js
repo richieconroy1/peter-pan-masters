@@ -1195,7 +1195,7 @@ export default function App() {
                       </thead>
                       <tbody>
                         {scored.map((e, i) => (
-                          <tr key={e.id} className={i === 0 ? "row-first" : ""}>
+                          <tr key={e.id}>
                             <td className="scorecard-pos">{i + 1}</td>
                             <td className="scorecard-name-col">
                               <div className="scorecard-entry-name">{e.name}</div>
