@@ -345,13 +345,16 @@ export default function App() {
       pos === 9 ? 8 : pos === 10 ? 7 : pos <= 15 ? 6 : pos <= 20 ? 5 :
       pos <= 25 ? 4 : pos <= 30 ? 3 : pos <= 40 ? 2 : pos <= 50 ? 1 : 0;
     return (
-      (stats.eagles || 0) * 13 +      // double eagle or better = +13
+      (stats.eagles || 0) * 13 +
       (stats.birdies || 0) * 3 +
       (stats.pars || 0) * 0.5 +
       (stats.bogeys || 0) * -0.5 +
       (stats.double_bogeys || 0) * -1 +
-      (stats.triple_bogeys || 0) * -1 +  // worse than double bogey = -1
+      (stats.triple_bogeys || 0) * -1 +
       (stats.hole_in_one || 0) * 5 +
+      (stats.birdie_streak_bonus || 0) * 3 +
+      (stats.bogey_free_bonus || 0) * 3 +
+      (stats.all_rounds_under_70_bonus || 0) * 5 +
       positionPoints
     );
   };
