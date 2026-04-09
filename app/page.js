@@ -196,7 +196,7 @@ export default function App() {
   const fetchLiveScores = async () => {
     try {
       showToast("Updating scores...", "info");
-      const res = await fetch("/api/leaderboard");
+      const res = await fetch("https://site.api.espn.com/apis/site/v2/sports/golf/leaderboard?tournamentId=401811941");
       if (!res.ok) throw new Error("Proxy fetch failed");
       const { leaderboard: lbData, scorecards: scData } = await res.json();
 
@@ -1235,7 +1235,7 @@ export default function App() {
                       </thead>
                       <tbody>
                         {scored.map((e, i) => (
-                          <tr key={e.id} className={i === 0 && expandedEntry !== e.id ? "row-first" : ""} style={{ cursor: "pointer" }} onClick={() => setExpandedEntry(expandedEntry === e.id ? null : e.id)}>
+                          <tr key={e.id} className={i === 0 ? "row-first" : ""}>
                             <td className="scorecard-pos">{i + 1}</td>
                             <td className="scorecard-name-col">
                               <div className="scorecard-entry-name">{e.name}</div>
