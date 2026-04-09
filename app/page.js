@@ -291,10 +291,35 @@ export default function App() {
     } catch (err) {
       console.error("❌ SportRadar proxy failed, trying ESPN fallback", err);
       try {
-        const res = await fetch("https://site.api.espn.com/apis/site/v2/sports/golf/pga/leaderboard");
+        const res = await fetch("https://site.api.espn.com/apis/site/v2/sports/golf/leaderboard?tournamentId=401811941");
         const data = await res.json();
         const playersData = data?.events?.[0]?.competitions?.[0]?.competitors || [];
+        const status = data?.events?.[0]?.status?.type?.state || "pre";
 
+        // Pre-tournament — show tee times from ESPN data
+        if (status === "pre") {
+          const ticker = playersData
+            .filter((p) => p.status?.type?.name !== "STATUS_WITHDRAWN")
+            .sort((a, b) => (a.status?.teeTime || "").localeCompare(b.status?.teeTime || ""))
+            .map((p) => {
+              const teeTime = p.status?.teeTime
+                ? new Date(p.status.teeTime).toLocaleTimeString("en-US", {
+                    hour: "numeric", minute: "2-digit",
+                    hour12: true, timeZone: "America/New_York",
+                  })
+                : "–";
+              return {
+                pos: teeTime,
+                name: p.athlete?.displayName || "Unknown",
+                score: null,
+                isTeeTime: true,
+              };
+            });
+          setTickerPlayers(ticker);
+          return;
+        }
+
+        // Live play — show position, score, thru hole
         const ticker = playersData
           .filter((p) => p.status?.type?.name !== "STATUS_WITHDRAWN")
           .sort((a, b) => (parseInt(a.rank) || 99) - (parseInt(b.rank) || 99))
@@ -303,15 +328,18 @@ export default function App() {
             const rawScore = p.score?.value;
             const score = (rawScore !== null && rawScore !== undefined && !isNaN(Number(rawScore)))
               ? Number(rawScore) : null;
+            const thru = p.status?.thru || 0;
+            const thruDisplay = thru === 18 ? "F" : thru > 0 ? `Thru ${thru}` : null;
             return {
               pos: p.rank || "–",
               name: p.athlete?.displayName || "Unknown",
               score,
+              thru: thruDisplay,
             };
           });
         setTickerPlayers(ticker);
 
-        // Also build liveData from ESPN for pool scoring
+        // Build liveData from ESPN for pool scoring
         const scores = {};
         playersData.forEach((p) => {
           const pName = p.athlete?.displayName;
@@ -551,6 +579,11 @@ export default function App() {
                   {!p.isTeeTime && p.score !== null && p.score !== undefined && (
                     <span className={p.score < 0 ? "ticker-score-under" : p.score === 0 ? "ticker-score-even" : "ticker-score-over"}>
                       {formatScore(p.score)}
+                    </span>
+                  )}
+                  {!p.isTeeTime && p.thru && (
+                    <span style={{ fontSize: "11px", color: "#8aab93", fontStyle: "italic", marginLeft: "2px" }}>
+                      {p.thru}
                     </span>
                   )}
                 </span>
