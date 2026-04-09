@@ -213,7 +213,6 @@ export default function App() {
           (p.rounds || []).forEach((round) => {
             const holes = round.holes || [];
             if (holes.length === 0) return;
-            // Fire on any round with holes played, not just complete rounds
             let streak = 0, streakFound = false;
             holes.forEach((h) => {
               const diff = (h.strokes || 0) - (h.par || 0);
@@ -222,7 +221,10 @@ export default function App() {
             });
             if (streakFound) birdieStreakBonus++;
           });
+          // Key by both ID and full name for reliable lookup
+          const fullName = `${p.first_name || ""} ${p.last_name || ""}`.trim();
           scorecardMap[p.id] = { birdieStreakBonus };
+          if (fullName) scorecardMap[fullName] = { birdieStreakBonus };
         });
       }
 
@@ -260,7 +262,8 @@ export default function App() {
           }
         });
         if (completedRoundScores.length === 4 && completedRoundScores.every(s => s < 70)) allRoundsUnder70 = 1;
-        const scData = scorecardMap[p.id] || {};
+        const fullNameKey = `${p.first_name || ""} ${p.last_name || ""}`.trim();
+        const scData = scorecardMap[p.id] || scorecardMap[fullNameKey] || {};
         scores[fullName] = { position, birdies, eagles, double_eagles, pars, bogeys, double_bogeys: doubles, triple_bogeys: tripleOrWorse, hole_in_one: holeInOne, birdie_streak_bonus: scData.birdieStreakBonus || 0, bogey_free_bonus: bogeyFreeBonus, all_rounds_under_70_bonus: allRoundsUnder70 };
       });
       setLiveData(scores);
