@@ -1083,110 +1083,62 @@ export default function App() {
           <div className="two-col" style={{ display: "flex", gap: "40px", alignItems: "flex-start", position: "relative" }}>
             <div className="two-col-divider" style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: "1px", background: "rgba(212,175,55,0.3)" }} />
 
-            {/* LEFT — Styled Player Picker */}
+            {/* LEFT — Scoring Rules */}
             <div className="two-col-left anim-left" style={{ width: "50%" }}>
+              <div style={sectionStyle}>
+                <h3 style={sectionSubheading}>📋 Scoring Rules</h3>
 
-              {/* Lock / countdown banner */}
-              {isLocked ? (
-                <div className="lock-banner">
-                  🔒 Lineup submissions are closed — entries locked at midnight PT, April 10th
-                </div>
-              ) : countdown && (
-                <div className="countdown-banner">
-                  Entries lock in&nbsp;&nbsp;<span className="countdown-time">{countdown}</span>
-                </div>
-              )}
+                <p style={{ color: "#d4af37", fontWeight: 700, fontSize: "13px", letterSpacing: "1px", textTransform: "uppercase", marginBottom: "6px", fontFamily: "'Cormorant SC', serif", fontStyle: "italic" }}>Per Hole Scoring</p>
+                <table style={tableStyle}>
+                  <thead><tr><th style={thStyle}>Result</th><th style={{ ...thStyle, textAlign: "right" }}>Pts</th></tr></thead>
+                  <tbody>
+                    {[
+                      ["Double Eagle or Better", "+13"], ["Eagle", "+8"], ["Birdie", "+3"],
+                      ["Par", "+0.5"], ["Bogey", "−0.5"], ["Double Bogey", "−1"],
+                      ["Worse than Double Bogey", "−1"],
+                    ].map(([label, pts]) => (
+                      <tr key={label}><td style={tdStyle}>{label}</td><td style={tdPtsStyle}>{pts}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
 
-              {/* Picker card */}
-              <div className="picker-section">
-                <div className="picker-header">
-                  <h2 className="picker-title">Select Your Six</h2>
-                  <span className="picker-salary-cap">Salary cap $50,000</span>
-                </div>
+                <p style={{ color: "#d4af37", fontWeight: 700, fontSize: "13px", letterSpacing: "1px", textTransform: "uppercase", margin: "14px 0 6px", fontFamily: "'Cormorant SC', serif", fontStyle: "italic" }}>Tournament Finish</p>
+                <table style={tableStyle}>
+                  <thead><tr><th style={thStyle}>Position</th><th style={{ ...thStyle, textAlign: "right" }}>Pts</th></tr></thead>
+                  <tbody>
+                    {[
+                      ["1st", "+30"], ["2nd", "+20"], ["3rd", "+18"], ["4th", "+16"],
+                      ["5th", "+14"], ["6th", "+12"], ["7th", "+10"], ["8th", "+9"],
+                      ["9th", "+8"], ["10th", "+7"], ["11th – 15th", "+6"], ["16th – 20th", "+5"],
+                      ["21st – 25th", "+4"], ["26th – 30th", "+3"], ["31st – 40th", "+2"], ["41st – 50th", "+1"],
+                    ].map(([label, pts]) => (
+                      <tr key={label}><td style={tdStyle}>{label}</td><td style={tdPtsStyle}>{pts}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
 
-                {/* Live budget badge */}
-                <div className="picker-badge">
-                  <span>
-                    <span className="picker-badge-count">{lineup.length}/6</span> selected
-                  </span>
-                  <span style={{ opacity: 0.3 }}>·</span>
-                  <span className={totalSalary > salaryCap ? "picker-badge-over" : ""}>
-                    <span className="picker-badge-count">${(salaryCap - totalSalary).toLocaleString()}</span> remaining
-                  </span>
-                  {totalSalary > salaryCap && <span className="picker-badge-over">⚠️ Over budget</span>}
-                </div>
+                <p style={{ color: "#d4af37", fontWeight: 700, fontSize: "13px", letterSpacing: "1px", textTransform: "uppercase", margin: "14px 0 6px", fontFamily: "'Cormorant SC', serif", fontStyle: "italic" }}>Streaks &amp; Bonuses</p>
+                <table style={tableStyle}>
+                  <thead><tr><th style={thStyle}>Bonus</th><th style={{ ...thStyle, textAlign: "right" }}>Pts</th></tr></thead>
+                  <tbody>
+                    {[
+                      ["Streak of 3 Birdies or Better (Max 1/Round)", "+3"],
+                      ["Bogey Free Round", "+3"],
+                      ["All Predetermined Rounds Under 70 Strokes", "+5"],
+                      ["Hole In One", "+5"],
+                    ].map(([label, pts]) => (
+                      <tr key={label}><td style={tdStyle}>{label}</td><td style={tdPtsStyle}>{pts}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
 
-                {/* Search */}
-                <input
-                  className="player-search"
-                  placeholder="Search players..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-
-                <hr className="picker-rule" />
-
-                {(() => {
-                  const filtered = players.filter((p) =>
-                    p.name.toLowerCase().includes(search.toLowerCase())
-                  );
-                  // Determine cut line — position 50 in liveData after round 2
-                  const cutPosition = 50;
-                  let cutInserted = false;
-
-                  return filtered.map((p, idx) => {
-                    const selected = !!lineup.find((lp) => lp.name === p.name);
-                    const fullAndNotSelected = lineup.length >= 6 && !selected;
-                    const liveStats = Object.keys(liveData).find(
-                      (n) => normalizeName(n) === normalizeName(p.name)
-                    );
-                    const playerPos = liveStats ? liveData[liveStats].position : null;
-                    const isMissedCut = isLocked && playerPos && playerPos > cutPosition;
-
-                    // Insert cut line before first player over position 50
-                    let cutLine = null;
-                    if (isLocked && !cutInserted && isMissedCut) {
-                      cutInserted = true;
-                      cutLine = (
-                        <div key="cut-line" className="cut-line-row">
-                          <span className="cut-line-label">✂ Cut Line</span>
-                          <div className="cut-line-rule" />
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <React.Fragment key={p.name}>
-                        {cutLine}
-                        <div
-                          onClick={() => togglePlayer(p)}
-                          className={[
-                            "player-row",
-                            selected ? "player-row--selected" : "",
-                            fullAndNotSelected ? "player-row--full" : "",
-                            isLocked ? "player-row--locked" : "",
-                            isMissedCut ? "player-row--cut" : "",
-                          ].filter(Boolean).join(" ")}
-                        >
-                          <span style={{ display: "flex", alignItems: "center" }}>
-                            {selected && (
-                              <span className="player-check">
-                                <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
-                                  <polyline points="1.5,4.5 3.5,6.5 7.5,2.5" stroke="#0b3d2e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
-                              </span>
-                            )}
-                            <span className="player-name">{p.name}</span>
-                            {isMissedCut && (
-                              <span style={{ marginLeft: "8px", fontSize: "10px", color: "#e07070", fontStyle: "italic", opacity: 0.8 }}>CUT</span>
-                            )}
-                          </span>
-                          <span className="player-salary">${p.salary.toLocaleString()}</span>
-                        </div>
-                      </React.Fragment>
-                    );
-                  });
-                })()}
+                <p style={{ color: "#d4af37", fontWeight: 700, fontSize: "13px", letterSpacing: "1px", textTransform: "uppercase", margin: "14px 0 6px", fontFamily: "'Cormorant SC', serif", fontStyle: "italic" }}>Scoring Notes</p>
+                <p style={{ fontSize: "14px", lineHeight: "1.8", opacity: 0.8, margin: "0 0 8px", fontFamily: "'Cormorant SC', serif", fontStyle: "italic" }}>
+                  Ties for a finishing position will not reduce or average down points. For example, if 2 golfers tie for 3rd place, each will receive the 18 fantasy points for the 3rd place finish result.
+                </p>
+                <p style={{ fontSize: "14px", lineHeight: "1.8", opacity: 0.8, margin: 0, fontFamily: "'Cormorant SC', serif", fontStyle: "italic" }}>
+                  Playoff holes will not count towards final scoring, with the exception of the finishing position scoring. The golfer who wins the tournament will receive the sole award of 1st place points, but will not accrue points for their scoring result in the individual playoff holes.
+                </p>
               </div>
             </div>
 
@@ -1452,62 +1404,6 @@ export default function App() {
                 )}
               </div>
 
-              {/* 6. SCORING RULES */}
-              <div style={sectionStyle}>
-                <h3 style={sectionSubheading}>📋 Scoring Rules</h3>
-
-                <p style={{ color: "#d4af37", fontWeight: 700, fontSize: "13px", letterSpacing: "1px", textTransform: "uppercase", marginBottom: "6px", fontFamily: "'Cormorant SC', serif", fontStyle: "italic" }}>Per Hole Scoring</p>
-                <table style={tableStyle}>
-                  <thead><tr><th style={thStyle}>Result</th><th style={{ ...thStyle, textAlign: "right" }}>Pts</th></tr></thead>
-                  <tbody>
-                    {[
-                      ["Double Eagle or Better", "+13"], ["Eagle", "+8"], ["Birdie", "+3"],
-                      ["Par", "+0.5"], ["Bogey", "−0.5"], ["Double Bogey", "−1"],
-                      ["Worse than Double Bogey", "−1"],
-                    ].map(([label, pts]) => (
-                      <tr key={label}><td style={tdStyle}>{label}</td><td style={tdPtsStyle}>{pts}</td></tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                <p style={{ color: "#d4af37", fontWeight: 700, fontSize: "13px", letterSpacing: "1px", textTransform: "uppercase", margin: "14px 0 6px", fontFamily: "'Cormorant SC', serif", fontStyle: "italic" }}>Tournament Finish</p>
-                <table style={tableStyle}>
-                  <thead><tr><th style={thStyle}>Position</th><th style={{ ...thStyle, textAlign: "right" }}>Pts</th></tr></thead>
-                  <tbody>
-                    {[
-                      ["1st", "+30"], ["2nd", "+20"], ["3rd", "+18"], ["4th", "+16"],
-                      ["5th", "+14"], ["6th", "+12"], ["7th", "+10"], ["8th", "+9"],
-                      ["9th", "+8"], ["10th", "+7"], ["11th – 15th", "+6"], ["16th – 20th", "+5"],
-                      ["21st – 25th", "+4"], ["26th – 30th", "+3"], ["31st – 40th", "+2"], ["41st – 50th", "+1"],
-                    ].map(([label, pts]) => (
-                      <tr key={label}><td style={tdStyle}>{label}</td><td style={tdPtsStyle}>{pts}</td></tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                <p style={{ color: "#d4af37", fontWeight: 700, fontSize: "13px", letterSpacing: "1px", textTransform: "uppercase", margin: "14px 0 6px", fontFamily: "'Cormorant SC', serif", fontStyle: "italic" }}>Streaks &amp; Bonuses</p>
-                <table style={tableStyle}>
-                  <thead><tr><th style={thStyle}>Bonus</th><th style={{ ...thStyle, textAlign: "right" }}>Pts</th></tr></thead>
-                  <tbody>
-                    {[
-                      ["Streak of 3 Birdies or Better (Max 1/Round)", "+3"],
-                      ["Bogey Free Round", "+3"],
-                      ["All Predetermined Rounds Under 70 Strokes", "+5"],
-                      ["Hole In One", "+5"],
-                    ].map(([label, pts]) => (
-                      <tr key={label}><td style={tdStyle}>{label}</td><td style={tdPtsStyle}>{pts}</td></tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                <p style={{ color: "#d4af37", fontWeight: 700, fontSize: "13px", letterSpacing: "1px", textTransform: "uppercase", margin: "14px 0 6px", fontFamily: "'Cormorant SC', serif", fontStyle: "italic" }}>Scoring Notes</p>
-                <p style={{ fontSize: "14px", lineHeight: "1.8", opacity: 0.8, margin: "0 0 8px", fontFamily: "'Cormorant SC', serif", fontStyle: "italic" }}>
-                  Ties for a finishing position will not reduce or average down points. For example, if 2 golfers tie for 3rd place, each will receive the 18 fantasy points for the 3rd place finish result.
-                </p>
-                <p style={{ fontSize: "14px", lineHeight: "1.8", opacity: 0.8, margin: 0, fontFamily: "'Cormorant SC', serif", fontStyle: "italic" }}>
-                  Playoff holes will not count towards final scoring, with the exception of the finishing position scoring. The golfer who wins the tournament will receive the sole award of 1st place points, but will not accrue points for their scoring result in the individual playoff holes.
-                </p>
-              </div>
 
             </div>
           </div>
