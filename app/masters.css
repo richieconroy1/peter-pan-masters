@@ -299,7 +299,7 @@
   background: transparent;
   border-bottom: 1px solid rgba(255,255,255,0.05);
 }
-.scorecard-table tbody tr.row-first:hover { background: rgba(255,255,255,0.03); }
+.scorecard-table tbody tr.row-first:hover { background: rgba(255,255,255,0.06) !important; }
 .scorecard-table td { padding: 0; vertical-align: top; }
 .scorecard-pos {
   padding: 10px 6px 10px 8px; color: #8aab93;
