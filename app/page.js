@@ -23,6 +23,7 @@ export default function App() {
   const [draftSaved, setDraftSaved] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
   const [search, setSearch] = useState("");
+  const [selectedEntrant, setSelectedEntrant] = useState(null);
   const [toast, setToast] = useState(null);
 
   const poolId = "peter-pan-masters-2026";
