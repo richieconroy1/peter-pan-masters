@@ -201,9 +201,10 @@ export default function App() {
       if (!res.ok) throw new Error("ESPN fetch failed");
       const data = await res.json();
       const playersData = data?.events?.[0]?.competitions?.[0]?.competitors || [];
-      const status = data?.events?.[0]?.status?.type?.state || "pre";
+      // Detect if tournament is live by checking if any player has started (thru > 0)
+      const hasStarted = playersData.some((p) => (p.status?.thru || 0) > 0);
 
-      if (status === "pre") {
+      if (!hasStarted) {
         const ticker = playersData
           .filter((p) => p.status?.type?.name !== "STATUS_WITHDRAWN")
           .sort((a, b) => (a.status?.teeTime || "").localeCompare(b.status?.teeTime || ""))
@@ -589,7 +590,7 @@ export default function App() {
         /* ── MOBILE RESPONSIVE ── */
         @media (max-width: 768px) {
           .two-col {
-            flex-direction: column-reverse !important;
+            flex-direction: column !important;
             gap: 0 !important;
           }
           .two-col-left,
