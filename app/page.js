@@ -267,6 +267,38 @@ export default function App() {
       });
       setLiveData(scores);
 
+      // Fetch scorecards directly from browser to detect streaks
+      // This runs client-side so no Vercel timeout issues
+      try {
+        const scRes = await fetch(`https://api.sportradar.com/golf/trial/pga/v3/en/2026/tournaments/ebf84425-7ae8-491e-a128-831d175e287a/scorecards.json?api_key=ML1MTcGSOltNb1YeRaJLfD26yS5Tv87d5nxIolQi`);
+        if (scRes.ok) {
+          const scData = await scRes.json();
+          const updatedScores = { ...scores };
+          (scData.players || []).forEach((p) => {
+            const fullName = `${p.first_name} ${p.last_name}`;
+            if (!updatedScores[fullName]) return;
+            let birdieStreakBonus = 0;
+            (p.rounds || []).forEach((round) => {
+              const holes = round.holes || [];
+              if (holes.length === 0) return;
+              let streak = 0, streakFound = false;
+              holes.forEach((h) => {
+                const diff = (h.strokes || 0) - (h.par || 0);
+                if (diff <= -1) { streak++; if (streak >= 3) streakFound = true; }
+                else streak = 0;
+              });
+              if (streakFound) birdieStreakBonus++;
+            });
+            if (birdieStreakBonus > 0) {
+              updatedScores[fullName] = { ...updatedScores[fullName], birdie_streak_bonus: birdieStreakBonus };
+            }
+          });
+          setLiveData(updatedScores);
+        }
+      } catch (scErr) {
+        console.error("Client scorecard fetch failed:", scErr);
+      }
+
     } catch(err) {
       console.error("SR failed, ESPN fallback", err);
       try {
