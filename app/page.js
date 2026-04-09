@@ -307,7 +307,7 @@ export default function App() {
   useEffect(() => {
     if (!players || players.length === 0) return;
     fetchLiveScores();
-    const interval = setInterval(fetchLiveScores, 210000);
+    const interval = setInterval(fetchLiveScores, 180000);
     return () => clearInterval(interval);
   }, [players.length]);
 
