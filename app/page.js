@@ -286,12 +286,11 @@ export default function App() {
         }));
       setTickerPlayers(ticker);
 
-      // Old SportRadar block removed
-      if (false) {
-        const _unused = {};
-        [].forEach((p) => {
-        const fullName = "";
-        const position = 99;
+      // Build liveData for pool scoring
+      const scores = {};
+      leaderboard.forEach((p) => {
+        const fullName = `${p.first_name} ${p.last_name}`;
+        const position = p.position || 99;
         const sc = scorecardMap[p.id] || {};
         scores[fullName] = {
           position,
