@@ -243,11 +243,10 @@ export default function App() {
         const fullName = `${p.first_name} ${p.last_name}`;
         const position = p.position || 99;
         let birdies=0,pars=0,bogeys=0,doubles=0,eagles=0,double_eagles=0,tripleOrWorse=0,holeInOne=0;
-        let bogeyFreeBonus=0,allRoundsUnder70=0;
+        let bogeyFreeBonus=0,allRoundsUnder70=0,birdieStreakBonus=0;
         const completedRoundScores = [];
         (p.rounds || []).forEach((round) => {
           if (!round.thru || round.thru === 0) return;
-          // SR: eagles field = regular eagles (-2), other_scores covers double eagles (-3+)
           eagles += round.eagles || 0;
           double_eagles += round.double_eagles || 0;
           birdies += round.birdies || 0;
@@ -256,6 +255,8 @@ export default function App() {
           doubles += round.double_bogeys || 0;
           tripleOrWorse += round.other_scores || 0;
           holeInOne += round.holes_in_one || 0;
+          // Streak heuristic: 3+ birdies/eagles in a round = likely streak
+          if ((round.birdies || 0) + (round.eagles || 0) >= 3) birdieStreakBonus++;
           if (round.thru === 18 && round.strokes > 0) {
             completedRoundScores.push(round.strokes);
             if ((round.bogeys||0)===0 && (round.double_bogeys||0)===0 && (round.other_scores||0)===0) bogeyFreeBonus++;
@@ -264,7 +265,7 @@ export default function App() {
         if (completedRoundScores.length === 4 && completedRoundScores.every(s => s < 70)) allRoundsUnder70 = 1;
         const fullNameKey = `${p.first_name || ""} ${p.last_name || ""}`.trim();
         const scData = scorecardMap[p.id] || scorecardMap[fullNameKey] || {};
-        scores[fullName] = { position, birdies, eagles, double_eagles, pars, bogeys, double_bogeys: doubles, triple_bogeys: tripleOrWorse, hole_in_one: holeInOne, birdie_streak_bonus: scData.birdieStreakBonus || 0, bogey_free_bonus: bogeyFreeBonus, all_rounds_under_70_bonus: allRoundsUnder70 };
+        scores[fullName] = { position, birdies, eagles, double_eagles, pars, bogeys, double_bogeys: doubles, triple_bogeys: tripleOrWorse, hole_in_one: holeInOne, birdie_streak_bonus: scData.birdieStreakBonus || birdieStreakBonus, bogey_free_bonus: bogeyFreeBonus, all_rounds_under_70_bonus: allRoundsUnder70 };
       });
       setLiveData(scores);
 
