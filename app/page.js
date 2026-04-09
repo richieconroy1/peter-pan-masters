@@ -754,7 +754,7 @@ export default function App() {
         .scorecard-entry-name {
           font-size: 20px; font-weight: 700;
           font-style: italic;
-          color: #f7e7a1; letter-spacing: 0.02em;
+          color: #d4af37; letter-spacing: 0.02em;
           font-family: 'Cormorant SC', 'Cormorant', serif;
         }
         .row-first .scorecard-entry-name { color: #f7e7a1; }
