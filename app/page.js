@@ -213,7 +213,7 @@ export default function App() {
         setTickerPlayers(ticker);
         return;
       }
-      const ticker = playersData
+      const ticker2 = playersData
         .filter((p) => p.status?.type?.name !== "STATUS_WITHDRAWN")
         .sort((a, b) => (parseInt(a.rank) || 99) - (parseInt(b.rank) || 99))
         .slice(0, 50)
@@ -223,8 +223,8 @@ export default function App() {
           score: (!isNaN(Number(p.score?.value)) && p.score?.value != null) ? Number(p.score?.value) : null,
           thru: p.status?.thru === 18 ? "F" : p.status?.thru > 0 ? "Thru " + p.status?.thru : null,
         }));
-      setTickerPlayers(ticker);
-      const scores = {};
+      setTickerPlayers(ticker2);
+      const espnScores = {};
       playersData.forEach((p) => {
         const pName = p.athlete?.displayName;
         if (!pName) return;
@@ -241,9 +241,9 @@ export default function App() {
             else if (diff===2) doubles++;
           });
         });
-        scores[pName] = { position, birdies, eagles, pars, bogeys, double_bogeys: doubles, triple_bogeys: 0, hole_in_one: 0 };
+        espnScores[pName] = { position, birdies, eagles, pars, bogeys, double_bogeys: doubles, triple_bogeys: 0, hole_in_one: 0 };
       });
-      setLiveData(scores);
+      setLiveData(espnScores);
       return;
 
       // Build scorecard lookup keyed by player id
@@ -286,12 +286,11 @@ export default function App() {
         }));
       setTickerPlayers(ticker);
 
-      // Old SportRadar block removed
-      if (false) {
-        const _unused = {};
-        [].forEach((p) => {
-        const fullName = "";
-        const position = 99;
+      // Build liveData for pool scoring
+      const scores = {};
+      leaderboard.forEach((p) => {
+        const fullName = `${p.first_name} ${p.last_name}`;
+        const position = p.position || 99;
         const sc = scorecardMap[p.id] || {};
         scores[fullName] = {
           position,
