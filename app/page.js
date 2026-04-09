@@ -757,7 +757,7 @@ export default function App() {
           color: #d4af37; letter-spacing: 0.02em;
           font-family: 'Cormorant SC', 'Cormorant', serif;
         }
-        .row-first .scorecard-entry-name { color: #f7e7a1; }
+        .row-first .scorecard-entry-name { color: #d4af37; }
         .scorecard-players {
           display: flex; flex-wrap: wrap; gap: 2px 8px; margin-top: 3px;
         }
