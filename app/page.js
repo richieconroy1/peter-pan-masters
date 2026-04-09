@@ -1251,7 +1251,7 @@ export default function App() {
                                     if (s.birdies > 0) chips.push(<span key="b" className="chip-birdie">🐦×{s.birdies}</span>);
                                     if (s.bogeys > 0) chips.push(<span key="bo" className="chip-bogey">bog×{s.bogeys}</span>);
                                     if (s.double_bogeys > 0) chips.push(<span key="db" className="chip-bogey">dbl×{s.double_bogeys}</span>);
-                                    if (s.birdie_streak_bonus > 0) chips.push(<span key="str" style={{color:"#f7e7a1",fontWeight:700}}>🔥×{s.birdie_streak_bonus}</span>);
+                                    if ((s.birdie_streak_bonus || 0) > 0) chips.push(<span key="str" style={{color:"#f7e7a1",fontWeight:700}}>🔥×{s.birdie_streak_bonus}</span>);
                                     if (s.bogey_free_bonus > 0) chips.push(<span key="bf" style={{color:"#f7e7a1",fontWeight:700}}>🛡️</span>);
                                     if (s.position && s.position <= 50) chips.push(<span key="pos" className="chip-pos">T{s.position}</span>);
                                   }

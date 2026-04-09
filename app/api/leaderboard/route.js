@@ -8,16 +8,24 @@ export async function GET() {
       return Response.json({ error: "Missing API key" }, { status: 500 });
     }
 
-    const [lbRes, scRes] = await Promise.all([
-      fetch(`${SR_BASE}/leaderboard.json?api_key=${apiKey}`),
-      fetch(`${SR_BASE}/scorecards.json?api_key=${apiKey}`),
-    ]);
-
+    // Fetch leaderboard first - required
+    const lbRes = await fetch(`${SR_BASE}/leaderboard.json?api_key=${apiKey}`);
     const leaderboard = await lbRes.json();
-    const scorecards = scRes.ok ? await scRes.json() : null;
 
     if (leaderboard?.message === "Limit Exceeded") {
       return Response.json({ error: "quota_exceeded" }, { status: 429 });
+    }
+
+    // Fetch scorecards separately with timeout - optional
+    let scorecards = null;
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4000);
+      const scRes = await fetch(`${SR_BASE}/scorecards.json?api_key=${apiKey}`, { signal: controller.signal });
+      clearTimeout(timeout);
+      if (scRes.ok) scorecards = await scRes.json();
+    } catch (scErr) {
+      console.error("Scorecards fetch failed:", scErr.message);
     }
 
     const hasLiveData = (leaderboard?.leaderboard?.length || 0) > 0;
