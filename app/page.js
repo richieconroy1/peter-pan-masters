@@ -748,20 +748,20 @@ export default function App() {
           font-size: 12px; font-style: italic;
           white-space: nowrap; width: 24px;
         }
-        .row-first .scorecard-pos { color: #d4af37; }
+        .row-first .scorecard-pos { color: #0b3d2e; }
         .scorecard-name-col { padding: 6px 8px; }
         .scorecard-entry-name {
           font-size: 14px; font-weight: 700;
           color: #f7e7a1; letter-spacing: 0.03em;
         }
-        .row-first .scorecard-entry-name { color: #0b3d2e; }
+        .row-first .scorecard-entry-name { color: #0b3d2e; font-weight: 700; }
         .scorecard-players {
           display: flex; flex-wrap: wrap; gap: 2px 8px; margin-top: 3px;
         }
         .scorecard-player-chip {
           font-size: 11px; font-style: italic; color: #8aab93; white-space: nowrap;
         }
-        .row-first .scorecard-player-chip { color: #2a5a3a; }
+        .row-first .scorecard-player-chip { color: #1a4a2a; }
         .chip-eagle { color: #d4af37 !important; font-weight: 700; }
         .chip-birdie { color: #5ec47a !important; }
         .chip-bogey { color: #e07070 !important; }
@@ -1235,7 +1235,7 @@ export default function App() {
                       </thead>
                       <tbody>
                         {scored.map((e, i) => (
-                          <tr key={e.id} className={i === 0 ? "row-first" : ""}>
+                          <tr key={e.id} className={i === 0 && expandedEntry !== e.id ? "row-first" : ""} style={{ cursor: "pointer" }} onClick={() => setExpandedEntry(expandedEntry === e.id ? null : e.id)}>
                             <td className="scorecard-pos">{i + 1}</td>
                             <td className="scorecard-name-col">
                               <div className="scorecard-entry-name">{e.name}</div>
