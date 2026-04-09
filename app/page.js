@@ -1288,7 +1288,7 @@ export default function App() {
                           <tr key={e.id} className={i === 0 ? "row-first" : ""}>
                             <td className="scorecard-pos">{i + 1}</td>
                             <td className="scorecard-name-col">
-                              <div className="scorecard-entry-name">{e.name}</div>
+                              <div className="scorecard-entry-name" style={{ fontSize: "18px", color: i === 0 ? "#0b3d2e" : "#f7e7a1" }}>{e.name}</div>
                               <div className="scorecard-players">
                                 {(e.playerStats || []).map((p, j) => {
                                   const s = p.stats;
@@ -1300,7 +1300,7 @@ export default function App() {
                                     if (s.position && s.position <= 50) chips.push(<span key="pos" className="chip-pos">T{s.position}</span>);
                                   }
                                   return (
-                                    <span key={j} className="scorecard-player-chip">
+                                    <span key={j} className="scorecard-player-chip" style={{ color: i === 0 ? "#2a5a3a" : undefined, fontSize: "13px" }}>
                                       {p.name.split(" ").slice(-1)[0]}
                                       {chips.length > 0 && <span style={{ marginLeft: "3px" }}>{chips}</span>}
                                       {j < (e.playerStats?.length || 0) - 1 && <span style={{ opacity: 0.3, marginLeft: "2px" }}>·</span>}
