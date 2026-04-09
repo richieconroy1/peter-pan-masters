@@ -201,10 +201,9 @@ export default function App() {
       if (!res.ok) throw new Error("ESPN fetch failed");
       const data = await res.json();
       const playersData = data?.events?.[0]?.competitions?.[0]?.competitors || [];
-      // Detect if tournament is live by checking if any player has started (thru > 0)
-      const hasStarted = playersData.some((p) => (p.status?.thru || 0) > 0);
+      const status = data?.events?.[0]?.status?.type?.state || "pre";
 
-      if (!hasStarted) {
+      if (status === "pre") {
         const ticker = playersData
           .filter((p) => p.status?.type?.name !== "STATUS_WITHDRAWN")
           .sort((a, b) => (a.status?.teeTime || "").localeCompare(b.status?.teeTime || ""))
@@ -224,7 +223,13 @@ export default function App() {
         .map((p) => ({
           pos: p.rank || "–",
           name: p.athlete?.displayName || "Unknown",
-          score: (!isNaN(Number(p.score?.value)) && p.score?.value != null) ? Number(p.score?.value) : null,
+          score: (() => {
+            const stp = p.statistics?.find(s => s.name === "scoreToPar");
+            if (stp && stp.displayValue !== "-" && stp.displayValue !== "--") {
+              return Number(stp.value);
+            }
+            return null;
+          })(),
           thru: p.status?.thru === 18 ? "F" : p.status?.thru > 0 ? "Thru " + p.status?.thru : null,
         }));
       setTickerPlayers(ticker2);
