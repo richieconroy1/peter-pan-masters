@@ -762,9 +762,11 @@ export default function App() {
           display: flex; flex-wrap: wrap; gap: 2px 8px; margin-top: 3px;
         }
         .scorecard-player-chip {
-          font-size: 16px; font-style: italic; color: #a8c4ae; white-space: nowrap;
+          font-size: 15px; font-style: normal; color: white; white-space: nowrap;
           font-family: 'Cormorant SC', 'Cormorant', serif;
-          letter-spacing: 0.02em;
+          letter-spacing: 0.01em;
+          display: inline-block;
+          padding: 2px 0;
         }
         .row-first .scorecard-player-chip { color: #a8c4ae; }
         .chip-eagle { color: #d4af37 !important; font-weight: 700; }
