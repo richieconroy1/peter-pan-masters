@@ -773,11 +773,12 @@ export default function App() {
         .chip-pos { color: #a8c4ae !important; font-size: 10px; }
         .scorecard-pts {
           padding: 10px 10px 10px 4px; text-align: right;
-          font-size: 16px; font-weight: 700; color: #d4af37; white-space: nowrap;
+          font-size: 22px; font-weight: 700; color: #d4af37; white-space: nowrap;
+          font-family: 'Cormorant SC', serif;
         }
         .row-first .scorecard-pts { color: #d4af37; }
         .scorecard-pts-label {
-          font-size: 9px; font-weight: 400; opacity: 0.7;
+          font-size: 12px; font-weight: 400; opacity: 0.7;
           letter-spacing: 0.5px; text-transform: uppercase; display: block;
         }
 
