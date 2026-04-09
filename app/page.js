@@ -205,6 +205,26 @@ export default function App() {
       const leaderboard = json.leaderboard?.leaderboard || [];
       if (leaderboard.length === 0) throw new Error("no data");
 
+      // Build scorecard lookup for streak detection
+      const scorecardMap = {};
+      if (json.scorecards?.players) {
+        json.scorecards.players.forEach((p) => {
+          let birdieStreakBonus = 0;
+          (p.rounds || []).forEach((round) => {
+            const holes = round.holes || [];
+            if (holes.length < 18) return;
+            let streak = 0, streakFound = false;
+            holes.forEach((h) => {
+              const diff = (h.strokes || 0) - (h.par || 0);
+              if (diff <= -1) { streak++; if (streak >= 3) streakFound = true; }
+              else streak = 0;
+            });
+            if (streakFound) birdieStreakBonus++;
+          });
+          scorecardMap[p.id] = { birdieStreakBonus };
+        });
+      }
+
       const ticker2 = leaderboard
         .filter((p) => p.status !== "withdrawn")
         .slice(0, 50)
@@ -239,7 +259,8 @@ export default function App() {
           }
         });
         if (completedRoundScores.length === 4 && completedRoundScores.every(s => s < 70)) allRoundsUnder70 = 1;
-        scores[fullName] = { position, birdies, eagles, double_eagles, pars, bogeys, double_bogeys: doubles, triple_bogeys: tripleOrWorse, hole_in_one: holeInOne, birdie_streak_bonus: 0, bogey_free_bonus: bogeyFreeBonus, all_rounds_under_70_bonus: allRoundsUnder70 };
+        const scData = scorecardMap[p.id] || {};
+        scores[fullName] = { position, birdies, eagles, double_eagles, pars, bogeys, double_bogeys: doubles, triple_bogeys: tripleOrWorse, hole_in_one: holeInOne, birdie_streak_bonus: scData.birdieStreakBonus || 0, bogey_free_bonus: bogeyFreeBonus, all_rounds_under_70_bonus: allRoundsUnder70 };
       });
       setLiveData(scores);
 
