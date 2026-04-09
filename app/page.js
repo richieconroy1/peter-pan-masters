@@ -197,89 +197,92 @@ export default function App() {
   const fetchLiveScores = async () => {
     try {
       showToast("Updating scores...", "info");
-      const res = await fetch("/api/leaderboard");
-      if (!res.ok) throw new Error("Proxy fetch failed");
-      const { leaderboard: lbData, scorecards: scData } = await res.json();
+      const res = await fetch("https://site.api.espn.com/apis/site/v2/sports/golf/leaderboard?tournamentId=401811941");
+      if (!res.ok) throw new Error("ESPN fetch failed");
+      const data = await res.json();
+      const playersData = data?.events?.[0]?.competitions?.[0]?.competitors || [];
+      const status = data?.events?.[0]?.status?.type?.state || "pre";
 
-      // Build scorecard lookup keyed by player id
-      const scorecardMap = {};
-      if (scData?.players) {
-        scData.players.forEach((p) => {
-          let birdies = 0, pars = 0, bogeys = 0, doubles = 0, eagles = 0,
-              tripleOrWorse = 0, holeInOne = 0;
-          (p.rounds || []).forEach((round) => {
-            (round.holes || []).forEach((h) => {
-              const diff = (h.strokes || 0) - (h.par || 0);
-              if (h.strokes === 1 && h.par === 1) holeInOne++;
-              else if (diff <= -2) eagles++;
-              else if (diff === -1) birdies++;
-              else if (diff === 0) pars++;
-              else if (diff === 1) bogeys++;
-              else if (diff === 2) doubles++;
-              else if (diff >= 3) tripleOrWorse++;
-            });
-          });
-          scorecardMap[p.id] = {
-            birdies, pars, bogeys,
-            double_bogeys: doubles,
-            triple_bogeys: tripleOrWorse,
-            eagles, hole_in_one: holeInOne,
-          };
-        });
-      }
-
-      const leaderboard = lbData?.leaderboard || [];
-
-      // Build ticker from leaderboard
-      const ticker = leaderboard
-        .filter((p) => p.status !== "withdrawn")
-        .slice(0, 30)
-        .map((p) => ({
-          pos: p.tied ? `T${p.position}` : `${p.position}`,
-          name: `${p.first_name} ${p.last_name}`,
-          score: p.score || 0,
-        }));
-      setTickerPlayers(ticker);
-
-      // Build liveData for pool scoring
-      const scores = {};
-      leaderboard.forEach((p) => {
-        const fullName = `${p.first_name} ${p.last_name}`;
-        const position = p.position || 99;
-        const sc = scorecardMap[p.id] || {};
-        scores[fullName] = {
-          position,
-          birdies:       sc.birdies       || 0,
-          eagles:        sc.eagles        || 0,
-          pars:          sc.pars          || 0,
-          bogeys:        sc.bogeys        || 0,
-          double_bogeys: sc.double_bogeys || 0,
-          triple_bogeys: sc.triple_bogeys || 0,
-          hole_in_one:   sc.hole_in_one   || 0,
-        };
-      });
-      setLiveData(scores);
-
-    } catch (err) {
-      console.error("❌ SportRadar proxy failed, trying ESPN fallback", err);
-      // Fallback to ESPN for ticker only
-      try {
-        const res = await fetch("https://site.api.espn.com/apis/site/v2/sports/golf/leaderboard?tournamentId=401811941");
-        const data = await res.json();
-        const playersData = data?.events?.[0]?.competitions?.[0]?.competitors || [];
+      if (status === "pre") {
         const ticker = playersData
           .filter((p) => p.status?.type?.name !== "STATUS_WITHDRAWN")
-          .sort((a, b) => (parseInt(a.rank) || 99) - (parseInt(b.rank) || 99))
-          .slice(0, 30)
+          .sort((a, b) => (a.status?.teeTime || "").localeCompare(b.status?.teeTime || ""))
           .map((p) => ({
-            pos: p.rank || "–",
+            pos: p.status?.teeTime ? new Date(p.status.teeTime).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "America/New_York" }) : "–",
             name: p.athlete?.displayName || "Unknown",
-            score: (!isNaN(Number(p.score?.value)) && p.score?.value !== null) ? Number(p.score?.value) : null,
+            score: null, isTeeTime: true,
           }));
         setTickerPlayers(ticker);
-      } catch (e) {
-        console.error("❌ ESPN fallback also failed", e);
+        return;
       }
+
+      const ticker2 = playersData
+        .filter((p) => p.status?.type?.name !== "STATUS_WITHDRAWN")
+        .sort((a, b) => (parseInt(a.rank) || 99) - (parseInt(b.rank) || 99))
+        .slice(0, 50)
+        .map((p) => ({
+          pos: p.rank || "–",
+          name: p.athlete?.displayName || "Unknown",
+          score: (!isNaN(Number(p.score?.value)) && p.score?.value != null) ? Number(p.score?.value) : null,
+          thru: p.status?.thru === 18 ? "F" : p.status?.thru > 0 ? "Thru " + p.status?.thru : null,
+        }));
+      setTickerPlayers(ticker2);
+
+      const espnScores = {};
+      playersData.forEach((p) => {
+        const pName = p.athlete?.displayName;
+        if (!pName) return;
+        const position = parseInt((p.rank || "99").replace("T", "")) || 99;
+        let birdies=0, pars=0, bogeys=0, doubles=0, eagles=0, holeInOne=0;
+        let birdieStreakBonus=0, bogeyFreeBonus=0, allRoundsUnder70=0;
+        const completedRoundScores = [];
+
+        (p.linescores || []).forEach((round) => {
+          const holes = round.holes || [];
+          if (holes.length === 0) return;
+          let roundDiffs = [];
+          let roundStrokes = 0;
+          let roundComplete = true;
+          holes.forEach((h) => {
+            if (h.score == null || h.par == null) { roundComplete = false; return; }
+            const diff = h.score - h.par;
+            roundDiffs.push(diff);
+            roundStrokes += h.score;
+            if (diff <= -2) eagles++;
+            else if (diff === -1) birdies++;
+            else if (diff === 0) pars++;
+            else if (diff === 1) bogeys++;
+            else if (diff === 2) doubles++;
+            if (h.score === 1 && h.par >= 3) holeInOne++;
+          });
+          if (!roundComplete || roundDiffs.length < 18) return;
+          let streak = 0;
+          let streakFound = false;
+          for (let d of roundDiffs) {
+            if (d <= -1) { streak++; if (streak >= 3) streakFound = true; }
+            else streak = 0;
+          }
+          if (streakFound) birdieStreakBonus++;
+          if (roundDiffs.every(d => d <= 0)) bogeyFreeBonus++;
+          if (roundStrokes > 0) completedRoundScores.push(roundStrokes);
+        });
+
+        if (completedRoundScores.length === 4 && completedRoundScores.every(s => s < 70)) {
+          allRoundsUnder70 = 1;
+        }
+
+        espnScores[pName] = {
+          position, birdies, eagles, pars, bogeys,
+          double_bogeys: doubles, triple_bogeys: 0, hole_in_one: holeInOne,
+          birdie_streak_bonus: birdieStreakBonus,
+          bogey_free_bonus: bogeyFreeBonus,
+          all_rounds_under_70_bonus: allRoundsUnder70,
+        };
+      });
+      setLiveData(espnScores);
+
+    } catch (err) {
+      console.error("ESPN fetch failed", err);
     }
   };
 
