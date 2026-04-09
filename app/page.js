@@ -276,7 +276,7 @@ export default function App() {
           if (!pName) return;
           const liveRank = p.status?.position?.displayName;
           const position = liveRank&&liveRank!=="-"&&liveRank!=="0" ? parseInt(liveRank.replace("T",""))||99 : parseInt((p.rank||"99").replace("T",""))||99;
-          let birdies=0,pars=0,bogeys=0,doubles=0,eagles=0,double_eagles=0,holeInOne=0;
+          let birdies=0,pars=0,bogeys=0,doubles=0,triples=0,eagles=0,double_eagles=0,holeInOne=0;
           (p.linescores||[]).forEach((round) => {
             (round.holes||[]).forEach((h) => {
               const hScore=h.score??h.value??null;
@@ -291,7 +291,7 @@ export default function App() {
               if(hScore===1&&hPar>=3)holeInOne++;
             });
           });
-          espnScores[pName] = { position, birdies, eagles, double_eagles, pars, bogeys, double_bogeys: doubles, triple_bogeys: 0, hole_in_one: holeInOne, birdie_streak_bonus: 0, bogey_free_bonus: 0, all_rounds_under_70_bonus: 0 };
+          espnScores[pName] = { position, birdies, eagles, double_eagles, pars, bogeys, double_bogeys: doubles, triple_bogeys: triples, hole_in_one: holeInOne, birdie_streak_bonus: 0, bogey_free_bonus: 0, all_rounds_under_70_bonus: 0 };
         });
         setLiveData(espnScores);
       } catch(e) { console.error("ESPN also failed", e); }
