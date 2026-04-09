@@ -1186,9 +1186,9 @@ export default function App() {
                     <table className="scorecard-table">
                       <thead>
                         <tr>
-                          <th style={{ width: "28px" }}>#</th>
-                          <th>Entrant / Roster</th>
-                          <th style={{ textAlign: "right" }}>Pts</th>
+                          <th style={{ ...thStyle, width: "28px" }}>#</th>
+                          <th style={thStyle}>Entrant / Roster</th>
+                          <th style={{ ...thStyle, textAlign: "right" }}>Pts</th>
                         </tr>
                       </thead>
                       <tbody>
