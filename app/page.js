@@ -277,12 +277,24 @@ export default function App() {
           allRoundsUnder70 = 1;
         }
 
+        // Use scoreToPar statistic directly for position — most reliable live field
+        const stpStat = p.statistics?.find(s => s.name === "scoreToPar");
+        const liveStp = (stpStat && stpStat.displayValue !== "-" && stpStat.displayValue !== "--") 
+          ? Number(stpStat.value) : null;
+
+        // Use rank from position display  
+        const liveRank = p.status?.position?.displayName;
+        const livePosition = liveRank && liveRank !== "-" && liveRank !== "0"
+          ? parseInt(liveRank.replace("T","")) || 99
+          : position;
+
         espnScores[pName] = {
-          position, birdies, eagles, pars, bogeys,
+          position: livePosition, birdies, eagles, pars, bogeys,
           double_bogeys: doubles, triple_bogeys: 0, hole_in_one: holeInOne,
           birdie_streak_bonus: birdieStreakBonus,
           bogey_free_bonus: bogeyFreeBonus,
           all_rounds_under_70_bonus: allRoundsUnder70,
+          score_to_par: liveStp,
         };
       });
       setLiveData(espnScores);
