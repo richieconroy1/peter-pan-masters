@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "app/api/leaderboard/route.js": {
+      "maxDuration": 30
+    }
+  }
+}
