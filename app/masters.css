@@ -296,9 +296,10 @@
 }
 .scorecard-table tbody tr:hover { background: rgba(255,255,255,0.03); }
 .scorecard-table tbody tr.row-first {
-  background: linear-gradient(90deg, rgba(212,175,55,0.22), rgba(212,175,55,0.08));
-  border-bottom: 1px solid rgba(212,175,55,0.3);
+  background: transparent;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
 }
+.scorecard-table tbody tr.row-first:hover { background: rgba(255,255,255,0.03); }
 .scorecard-table td { padding: 0; vertical-align: top; }
 .scorecard-pos {
   padding: 10px 6px 10px 8px; color: #8aab93;
