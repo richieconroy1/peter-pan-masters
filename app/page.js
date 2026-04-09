@@ -1078,8 +1078,117 @@ export default function App() {
           <div className="two-col" style={{ display: "flex", gap: "40px", alignItems: "flex-start", position: "relative" }}>
             <div className="two-col-divider" style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: "1px", background: "rgba(212,175,55,0.3)" }} />
 
-            {/* LEFT — Pool Leaderboard */}
+            {/* LEFT — Styled Player Picker */}
             <div className="two-col-left anim-left" style={{ width: "50%" }}>
+
+              {/* Lock / countdown banner */}
+              {isLocked ? (
+                <div className="lock-banner">
+                  🔒 Lineup submissions are closed — entries locked at midnight PT, April 10th
+                </div>
+              ) : countdown && (
+                <div className="countdown-banner">
+                  Entries lock in&nbsp;&nbsp;<span className="countdown-time">{countdown}</span>
+                </div>
+              )}
+
+              {/* Picker card */}
+              <div className="picker-section">
+                <div className="picker-header">
+                  <h2 className="picker-title">Select Your Six</h2>
+                  <span className="picker-salary-cap">Salary cap $50,000</span>
+                </div>
+
+                {/* Live budget badge */}
+                <div className="picker-badge">
+                  <span>
+                    <span className="picker-badge-count">{lineup.length}/6</span> selected
+                  </span>
+                  <span style={{ opacity: 0.3 }}>·</span>
+                  <span className={totalSalary > salaryCap ? "picker-badge-over" : ""}>
+                    <span className="picker-badge-count">${(salaryCap - totalSalary).toLocaleString()}</span> remaining
+                  </span>
+                  {totalSalary > salaryCap && <span className="picker-badge-over">⚠️ Over budget</span>}
+                </div>
+
+                {/* Search */}
+                <input
+                  className="player-search"
+                  placeholder="Search players..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+
+                <hr className="picker-rule" />
+
+                {(() => {
+                  const filtered = players.filter((p) =>
+                    p.name.toLowerCase().includes(search.toLowerCase())
+                  );
+                  // Determine cut line — position 50 in liveData after round 2
+                  const cutPosition = 50;
+                  let cutInserted = false;
+
+                  return filtered.map((p, idx) => {
+                    const selected = !!lineup.find((lp) => lp.name === p.name);
+                    const fullAndNotSelected = lineup.length >= 6 && !selected;
+                    const liveStats = Object.keys(liveData).find(
+                      (n) => normalizeName(n) === normalizeName(p.name)
+                    );
+                    const playerPos = liveStats ? liveData[liveStats].position : null;
+                    const isMissedCut = isLocked && playerPos && playerPos > cutPosition;
+
+                    // Insert cut line before first player over position 50
+                    let cutLine = null;
+                    if (isLocked && !cutInserted && isMissedCut) {
+                      cutInserted = true;
+                      cutLine = (
+                        <div key="cut-line" className="cut-line-row">
+                          <span className="cut-line-label">✂ Cut Line</span>
+                          <div className="cut-line-rule" />
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <React.Fragment key={p.name}>
+                        {cutLine}
+                        <div
+                          onClick={() => togglePlayer(p)}
+                          className={[
+                            "player-row",
+                            selected ? "player-row--selected" : "",
+                            fullAndNotSelected ? "player-row--full" : "",
+                            isLocked ? "player-row--locked" : "",
+                            isMissedCut ? "player-row--cut" : "",
+                          ].filter(Boolean).join(" ")}
+                        >
+                          <span style={{ display: "flex", alignItems: "center" }}>
+                            {selected && (
+                              <span className="player-check">
+                                <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                                  <polyline points="1.5,4.5 3.5,6.5 7.5,2.5" stroke="#0b3d2e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              </span>
+                            )}
+                            <span className="player-name">{p.name}</span>
+                            {isMissedCut && (
+                              <span style={{ marginLeft: "8px", fontSize: "10px", color: "#e07070", fontStyle: "italic", opacity: 0.8 }}>CUT</span>
+                            )}
+                          </span>
+                          <span className="player-salary">${p.salary.toLocaleString()}</span>
+                        </div>
+                      </React.Fragment>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+
+            {/* RIGHT */}
+            <div className="two-col-right anim-right" style={{ width: "50%" }}>
+
+              {/* 1. POOL LEADERBOARD */}
               <div style={sectionStyle}>
                 <h2 style={sectionHeading}>🏆 Pool Leaderboard</h2>
                 {!isLocked ? (
@@ -1161,122 +1270,183 @@ export default function App() {
                   </>
                 )}
               </div>
-              </div>
-            </div>
 
-            {/* RIGHT */}
-            <div className="two-col-right anim-right" style={{ width: "50%" }}>
-
-              {/* YOUR LINEUP — with entrant picker */}
+              {/* 2. YOUR LINEUP */}
               <div style={sectionStyle}>
-                <h3 style={sectionSubheading}>Your Lineup</h3>
-
-                {/* Entrant selector */}
-                <div style={{ marginBottom: "14px" }}>
-                  <p style={{ fontFamily: "'Cormorant SC', serif", fontStyle: "italic", fontSize: "13px", color: "#8aab93", margin: "0 0 8px" }}>
-                    Select your name to view your lineup:
-                  </p>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                    {scored.map((e) => (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                  <h3 style={sectionSubheading}>
+                    Your Lineup ({lineup.length}/6)
+                    {lineup.length === 6 && (
+                      <span style={{ marginLeft: "10px", color: "#d4af37", fontSize: "13px" }}>✅ Full</span>
+                    )}
+                  </h3>
+                  {/* Draft buttons */}
+                  {!isLocked && (
+                    <div style={{ display: "flex", gap: "8px" }}>
                       <button
-                        key={e.id}
-                        onClick={() => setSelectedEntrant(selectedEntrant === e.id ? null : e.id)}
-                        style={{
-                          padding: "6px 14px",
-                          borderRadius: "20px",
-                          border: selectedEntrant === e.id ? "1px solid rgba(212,175,55,0.8)" : "1px solid rgba(212,175,55,0.25)",
-                          background: selectedEntrant === e.id ? "rgba(212,175,55,0.2)" : "rgba(0,0,0,0.2)",
-                          color: selectedEntrant === e.id ? "#f7e7a1" : "#c8b97a",
-                          fontFamily: "'Cormorant SC', serif",
-                          fontSize: "14px",
-                          fontStyle: "italic",
-                          cursor: "pointer",
-                          transition: "all 0.2s",
-                        }}
+                        onClick={saveDraft}
+                        disabled={lineup.length === 0}
+                        className={`draft-btn${draftSaved ? " saved" : ""}`}
+                        style={{ opacity: lineup.length === 0 ? 0.4 : 1 }}
                       >
-                        {e.name}
+                        {draftSaved ? "✓ Saved" : "Save draft"}
                       </button>
-                    ))}
-                  </div>
+                      {hasDraft && (
+                        <button onClick={clearDraft} className="draft-btn clear">
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                {/* Selected entrant lineup */}
-                {selectedEntrant && (() => {
-                  const entry = scored.find((e) => e.id === selectedEntrant);
-                  if (!entry) return null;
-                  return (
-                    <div>
-                      <div style={{
-                        borderTop: "1px solid rgba(212,175,55,0.15)",
-                        paddingTop: "12px",
-                        marginBottom: "6px",
-                        fontFamily: "'Cormorant SC', serif",
-                        fontSize: "13px",
-                        fontStyle: "italic",
-                        color: "#8aab93",
-                      }}>
-                        {entry.name} · {(entry.players || []).length}/6 players · {entry.score.toFixed(1)} pts total
-                      </div>
-                      {(entry.playerStats || []).map((p, j) => {
-                        const pts = p.points;
-                        const s = p.stats;
-                        return (
-                          <div key={j} style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            padding: "8px 4px",
-                            borderBottom: "1px solid rgba(255,255,255,0.06)",
-                            fontFamily: "'Cormorant SC', serif",
-                          }}>
-                            <div>
-                              <span style={{ fontSize: "16px", fontStyle: "italic", color: "#f0e8cc" }}>
-                                {p.name}
-                              </span>
-                              {s && (
-                                <span style={{ marginLeft: "8px", fontSize: "13px", color: "#8aab93", fontStyle: "italic" }}>
-                                  {s.eagles > 0 && `🦅${s.eagles} `}
-                                  {s.birdies > 0 && `🐦${s.birdies} `}
-                                  {s.bogeys > 0 && `${s.bogeys}bog `}
-                                  {s.position && s.position <= 50 ? `Pos ${s.position}` : s.position > 50 ? "CUT" : ""}
-                                </span>
-                              )}
-                            </div>
-                            <span style={{
-                              fontSize: "16px",
-                              fontWeight: 700,
-                              color: pts > 0 ? "#d4af37" : pts < 0 ? "#e07070" : "#8aab93",
-                            }}>
-                              {s ? `${pts > 0 ? "+" : ""}${pts.toFixed(1)}` : "–"}
-                            </span>
-                          </div>
-                        );
-                      })}
-                      <div style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        marginTop: "10px",
-                        paddingTop: "10px",
-                        borderTop: "1px solid rgba(212,175,55,0.2)",
-                        fontFamily: "'Cormorant SC', serif",
-                        fontStyle: "italic",
-                        fontSize: "15px",
-                      }}>
-                        <span style={{ color: "#c8b97a" }}>Total</span>
-                        <span style={{ color: "#d4af37", fontWeight: 700 }}>{entry.score.toFixed(1)} pts</span>
-                      </div>
-                    </div>
-                  );
-                })()}
+                {hasDraft && lineup.length > 0 && (
+                  <div style={{
+                    fontSize: "11px", fontStyle: "italic", color: "#8aab93",
+                    marginBottom: "10px", letterSpacing: "0.04em",
+                    fontFamily: "'Cormorant SC', 'Cormorant', serif",
+                  }}>
+                    Draft saved — your picks will be here when you return.
+                  </div>
+                )}
 
-                {!selectedEntrant && (
-                  <p style={{ opacity: 0.45, fontSize: "13px", fontStyle: "italic", fontFamily: "'Cormorant SC', serif", margin: 0 }}>
-                    Select your name above to view your lineup and points.
-                  </p>
+                {lineup.length === 0 ? (
+                  <p style={{ opacity: 0.5, fontSize: "13px", margin: 0 }}>No players selected yet.</p>
+                ) : (
+                  lineup.map((p) => (
+                    <div key={p.name} style={{
+                      display: "flex", justifyContent: "space-between",
+                      padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,0.08)",
+                    }}>
+                      <span>{p.name}</span>
+                      <span style={{ color: "#d4af37" }}>${p.salary.toLocaleString()}</span>
+                    </div>
+                  ))
                 )}
               </div>
 
-              {/* SCORING RULES */}
+              {/* 3 & 4. SALARY + REMAINING */}
+              <div style={{ ...sectionStyle, display: "flex", justifyContent: "space-between" }}>
+                <div>
+                  <div style={{ fontSize: "13px", opacity: 0.7, letterSpacing: "1px", textTransform: "uppercase", marginBottom: "4px", fontFamily: "'Cormorant SC', serif", fontStyle: "italic" }}>Salary Used</div>
+                  <div style={{ fontSize: "22px", fontWeight: "bold", color: totalSalary > salaryCap ? "#ff4d4f" : "#ffffff" }}>
+                    ${totalSalary.toLocaleString()}
+                    <span style={{ fontSize: "13px", opacity: 0.55 }}> / $50,000</span>
+                  </div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: "13px", opacity: 0.7, letterSpacing: "1px", textTransform: "uppercase", marginBottom: "4px", fontFamily: "'Cormorant SC', serif", fontStyle: "italic" }}>Remaining</div>
+                  <div style={{ fontSize: "22px", fontWeight: "bold", color: remaining < 0 ? "#ff4d4f" : "#d4af37" }}>
+                    ${remaining.toLocaleString()}
+                    {remaining < 0 && <span style={{ fontSize: "13px", marginLeft: "6px" }}>⚠️ Over</span>}
+                  </div>
+                </div>
+              </div>
+
+              {/* 5. SUBMIT ENTRY */}
+              <div style={sectionStyle}>
+                <h3 style={sectionSubheading}>✍️ Submit Entry</h3>
+                {isLocked ? (
+                  <p style={{ color: "#e07070", fontStyle: "italic", fontSize: "13px", margin: 0 }}>
+                    Submissions are closed. The field is set — good luck.
+                  </p>
+                ) : submitSuccess ? (
+                  <div style={{
+                    textAlign: "center", padding: "16px 0",
+                    fontFamily: "'Cormorant SC', 'Cormorant', serif",
+                  }}>
+                    <div style={{ fontSize: "28px", marginBottom: "8px" }}>⛳</div>
+                    <div style={{ color: "#5ec47a", fontWeight: "bold", fontSize: "15px", marginBottom: "6px" }}>
+                      Entry submitted!
+                    </div>
+                    <div style={{ color: "#8aab93", fontSize: "12px", fontStyle: "italic" }}>
+                      Your lineup is locked in. Good luck out there.
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Venmo buy-in note */}
+                    <div style={{
+                      background: "rgba(212,175,55,0.07)",
+                      border: "1px solid rgba(212,175,55,0.2)",
+                      borderRadius: "6px",
+                      padding: "10px 14px",
+                      marginBottom: "12px",
+                      fontFamily: "'Cormorant SC', 'Cormorant', serif",
+                      fontStyle: "italic",
+                    }}>
+                      <div style={{ fontSize: "14px", color: "#f7e7a1", fontWeight: 700, marginBottom: "4px", letterSpacing: "0.04em" }}>
+                        Buy-in: $40
+                      </div>
+                      <div style={{ fontSize: "13px", color: "#c8b97a", lineHeight: "1.6", marginBottom: "8px" }}>
+                        Send payment via Venmo to{" "}
+                        <span style={{ color: "#d4af37", fontWeight: 700 }}>@richie-conroy</span>
+                        {" "}prior to submitting your entry.
+                      </div>
+                      <div style={{
+                        borderTop: "1px solid rgba(212,175,55,0.15)",
+                        paddingTop: "8px",
+                        display: "flex",
+                        gap: "20px",
+                      }}>
+                        <div style={{ fontSize: "13px", color: "#c8b97a", lineHeight: "1.6" }}>
+                          <span style={{ color: "#d4af37", fontWeight: 700 }}>1st Place</span>{" "}80%
+                        </div>
+                        <div style={{ fontSize: "13px", color: "#c8b97a", lineHeight: "1.6" }}>
+                          <span style={{ color: "#d4af37", fontWeight: 700 }}>2nd Place</span>{" "}20%
+                        </div>
+                      </div>
+                    </div>
+
+                    <input
+                      placeholder="Your Name"
+                      value={name}
+                      onChange={(e) => { setName(e.target.value); setSubmitError(""); }}
+                      style={{
+                        width: "100%", padding: "10px", marginBottom: "10px",
+                        boxSizing: "border-box", borderRadius: "4px",
+                        border: submitError ? "1px solid rgba(220,80,80,0.6)" : "1px solid rgba(255,255,255,0.3)",
+                        background: "rgba(0,0,0,0.3)", color: "white", fontSize: "15px",
+                        fontFamily: "'Cormorant SC', 'Cormorant', serif",
+                        fontStyle: "italic", letterSpacing: "0.04em",
+                      }}
+                    />
+                    {submitError && (
+                      <div style={{
+                        background: "rgba(180,60,60,0.15)",
+                        border: "1px solid rgba(220,80,80,0.3)",
+                        borderRadius: "4px",
+                        padding: "8px 12px",
+                        marginBottom: "10px",
+                        fontSize: "12px",
+                        fontStyle: "italic",
+                        color: "#e07070",
+                        fontFamily: "'Cormorant SC', 'Cormorant', serif",
+                        lineHeight: "1.5",
+                      }}>
+                        {submitError}
+                      </div>
+                    )}
+                    <button
+                      onClick={submitEntry}
+                      disabled={!canSubmit}
+                      style={{
+                        width: "100%", padding: "12px",
+                        background: canSubmit ? "#f7e7a1" : "#555",
+                        color: canSubmit ? "#0b3d2e" : "#999",
+                        border: "none", fontWeight: 700, borderRadius: "4px",
+                        fontSize: "16px", cursor: canSubmit ? "pointer" : "not-allowed",
+                        transition: "background 0.2s",
+                        fontFamily: "'Cormorant SC', 'Cormorant', serif",
+                        fontStyle: "italic", letterSpacing: "0.08em",
+                      }}
+                    >
+                      Submit Entry
+                    </button>
+                  </>
+                )}
+              </div>
+
               {/* 6. SCORING RULES */}
               <div style={sectionStyle}>
                 <h3 style={sectionSubheading}>📋 Scoring Rules</h3>
@@ -1334,9 +1504,11 @@ export default function App() {
                 </p>
               </div>
 
-
             </div>
           </div>
+        </div>
+      </div>
+
       {/* ── TOAST ── */}
       {toast && (
         <div className={`toast toast-${toast.type}`}>
