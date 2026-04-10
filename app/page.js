@@ -205,24 +205,15 @@ export default function App() {
       const players = json.data?.Players || [];
       if (players.length === 0) throw new Error("no data");
 
-      const ticker2 = players
-        .filter(p => p.Rank && p.Rank <= 50)
+      const ticker2 = [...players]
+        .filter(p => p.Rank)
         .sort((a, b) => a.Rank - b.Rank)
-        .map(p => {
-          // Calculate actual score from completed rounds
-          const completedScore = (p.Rounds || []).reduce((sum, r) => {
-            if (r.Score && r.Score > 0 && r.Par && r.Par > 0) {
-              return sum + (r.Score - r.Par);
-            }
-            return sum;
-          }, 0);
-          const hasScore = (p.Rounds || []).some(r => r.Score > 0);
-          return {
-            pos: p.Rank ? `${p.Rank}` : "–",
-            name: p.Name || "Unknown",
-            score: hasScore ? completedScore : null,
-          };
-        });
+        .slice(0, 50)
+        .map(p => ({
+          pos: `${p.Rank}`,
+          name: p.Name || "Unknown",
+          score: p.TotalScore !== null && p.TotalScore !== undefined ? Math.round(p.TotalScore) : null,
+        }));
       setTickerPlayers(ticker2);
 
       const scores = {};
