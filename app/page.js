@@ -238,8 +238,8 @@ export default function App() {
           holeInOne += round.HoleInOnes || 0;
           // Streak: use per-round field
           if (round.IncludesStreakOfThreeBirdiesOrBetter) birdieStreakBonus++;
-          // Bogey free: only award on completed rounds
-          if (isComplete && round.BogeyFree) bogeyFreeBonus++;
+          // Bogey free: completed 18-hole round with zero bogeys or worse
+          const totalHoles = (round.Pars||0)+(round.Birdies||0)+(round.Eagles||0)+(round.DoubleEagles||0)+(round.Bogeys||0)+(round.DoubleBogeys||0)+(round.TripleBogeys||0)+(round.WorseThanDoubleBogey||0); const isComplete18 = isComplete && totalHoles >= 18; const noBogeys = (round.Bogeys||0)===0 && (round.DoubleBogeys||0)===0 && (round.TripleBogeys||0)===0 && (round.WorseThanDoubleBogey||0)===0; if (isComplete18 && noBogeys) bogeyFreeBonus++;
           if (isComplete) {
             completedRoundStrokes.push(round.Score);
             completedRounds++;
