@@ -265,9 +265,14 @@ export default function App() {
         const scData = scorecardMap[p.id] || scorecardMap[fullNameKey] || {};
         scores[fullName] = { position, birdies, eagles, double_eagles, pars, bogeys, double_bogeys: doubles, triple_bogeys: tripleOrWorse, hole_in_one: holeInOne, birdie_streak_bonus: scData.birdieStreakBonus || 0, bogey_free_bonus: bogeyFreeBonus, all_rounds_under_70_bonus: allRoundsUnder70 };
       });
+      // Confirmed round 1 streak bonuses (verified from broadcast)
+      // Fleetwood: holes 2-4 | McIlroy: three straight birdies
+      const confirmedStreaks = ['Tommy Fleetwood', 'Rory McIlroy'];
+      confirmedStreaks.forEach((name) => {
+        const key = Object.keys(scores).find(k => normalizeName(k) === normalizeName(name));
+        if (key) scores[key].birdie_streak_bonus = Math.max(scores[key].birdie_streak_bonus || 0, 1);
+      });
       setLiveData(scores);
-
-
 
     } catch(err) {
       console.error("SR failed, ESPN fallback", err);
@@ -1252,6 +1257,7 @@ export default function App() {
                                     if (s.birdies > 0) chips.push(<span key="b" className="chip-birdie">🐦×{s.birdies}</span>);
                                     if (s.bogeys > 0) chips.push(<span key="bo" className="chip-bogey">bog×{s.bogeys}</span>);
                                     if (s.double_bogeys > 0) chips.push(<span key="db" className="chip-bogey">dbl×{s.double_bogeys}</span>);
+                                    if ((s.birdie_streak_bonus || 0) > 0) chips.push(<span key="str" style={{color:"#f7e7a1",fontWeight:700}}>🔥×{s.birdie_streak_bonus}</span>);
                                     if ((s.birdie_streak_bonus || 0) > 0) chips.push(<span key="str" style={{color:"#f7e7a1",fontWeight:700}}>🔥×{s.birdie_streak_bonus}</span>);
                                     if (s.bogey_free_bonus > 0) chips.push(<span key="bf" style={{color:"#f7e7a1",fontWeight:700}}>🛡️</span>);
                                     if (s.position && s.position <= 50) chips.push(<span key="pos" className="chip-pos">T{s.position}</span>);
