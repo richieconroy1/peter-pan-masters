@@ -220,22 +220,42 @@ export default function App() {
         const name = p.Name;
         if (!name) return;
         const position = p.Rank || 99;
-        const eagles = Math.round(p.Eagles || 0);
-        const doubleEagles = Math.round(p.DoubleEagles || 0);
-        const birdies = Math.round(p.Birdies || 0);
-        const pars = Math.round(p.Pars || 0);
-        const bogeys = Math.round(p.Bogeys || 0);
-        const doubleBogeys = Math.round(p.DoubleBogeys || 0);
-        const worseThanDouble = Math.round((p.WorseThanDoubleBogey || 0) + (p.TripleBogeys || 0) + (p.WorseThanTripleBogey || 0));
-        const holeInOne = Math.round(p.HoleInOnes || 0);
-        const birdieStreakBonus = Math.round(p.StreaksOfThreeBirdiesOrBetter || 0);
-        const bogeyFreeBonus = Math.round(p.BogeyFreeRounds || 0);
-        const allRoundsUnder70 = p.RoundsUnderSeventy >= 4 ? 1 : 0;
+        let eagles=0, doubleEagles=0, birdies=0, pars=0, bogeys=0;
+        let doubleBogeys=0, worseThanDouble=0, holeInOne=0;
+        let birdieStreakBonus=0, bogeyFreeBonus=0;
+        let completedRoundStrokes=[], completedRounds=0;
+
+        (p.Rounds || []).forEach((round) => {
+          // Only count completed rounds (have a Score)
+          const isComplete = round.Score != null && round.Score > 0;
+          eagles += round.Eagles || 0;
+          doubleEagles += round.DoubleEagles || 0;
+          birdies += round.Birdies || 0;
+          pars += round.Pars || 0;
+          bogeys += round.Bogeys || 0;
+          doubleBogeys += round.DoubleBogeys || 0;
+          worseThanDouble += (round.WorseThanDoubleBogey || 0) + (round.TripleBogeys || 0) + (round.WorseThanTripleBogey || 0);
+          holeInOne += round.HoleInOnes || 0;
+          // Streak: use per-round field
+          if (round.IncludesStreakOfThreeBirdiesOrBetter) birdieStreakBonus++;
+          // Bogey free: only award on completed rounds
+          if (isComplete && round.BogeyFree) bogeyFreeBonus++;
+          if (isComplete) {
+            completedRoundStrokes.push(round.Score);
+            completedRounds++;
+          }
+        });
+
+        // Apply confirmed R1 streak overrides
         const confirmedStreaks = ['Tommy Fleetwood', 'Rory McIlroy'];
         const streakOverride = confirmedStreaks.some(n => normalizeName(n) === normalizeName(name)) ? 1 : 0;
         const finalStreakBonus = Math.max(birdieStreakBonus, streakOverride);
+
+        const allRoundsUnder70 = completedRounds === 4 && completedRoundStrokes.every(s => s < 70) ? 1 : 0;
+
         scores[name] = {
-          position, eagles, double_eagles: doubleEagles, birdies, pars, bogeys,
+          position,
+          eagles, double_eagles: doubleEagles, birdies, pars, bogeys,
           double_bogeys: doubleBogeys, triple_bogeys: worseThanDouble,
           hole_in_one: holeInOne, birdie_streak_bonus: finalStreakBonus,
           bogey_free_bonus: bogeyFreeBonus, all_rounds_under_70_bonus: allRoundsUnder70,
