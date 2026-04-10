@@ -198,134 +198,53 @@ export default function App() {
     try {
       showToast("Updating scores...", "info");
       const res = await fetch("/api/leaderboard");
-      if (!res.ok) throw new Error("SR failed");
+      if (!res.ok) throw new Error("fetch failed");
       const json = await res.json();
       if (json.error) throw new Error(json.error);
 
-      const leaderboard = json.leaderboard?.leaderboard || [];
-      if (leaderboard.length === 0) throw new Error("no data");
+      const players = json.data?.Players || [];
+      if (players.length === 0) throw new Error("no data");
 
-      // Build scorecard lookup for streak detection
-      const scorecardMap = {};
-      if (json.scorecards?.players) {
-        json.scorecards.players.forEach((p) => {
-          let birdieStreakBonus = 0;
-          (p.rounds || []).forEach((round) => {
-            const holes = round.holes || [];
-            if (holes.length === 0) return;
-            let streak = 0, streakFound = false;
-            holes.forEach((h) => {
-              const diff = (h.strokes || 0) - (h.par || 0);
-              if (diff <= -1) { streak++; if (streak >= 3) streakFound = true; }
-              else streak = 0;
-            });
-            if (streakFound) birdieStreakBonus++;
-          });
-          // Key by both ID and full name for reliable lookup
-          const fullName = `${p.first_name || ""} ${p.last_name || ""}`.trim();
-          scorecardMap[p.id] = { birdieStreakBonus };
-          if (fullName) scorecardMap[fullName] = { birdieStreakBonus };
-        });
-      }
-
-      const ticker2 = leaderboard
-        .filter((p) => p.status !== "withdrawn")
-        .slice(0, 50)
-        .map((p) => ({
-          pos: p.tied ? `T${p.position}` : `${p.position || "–"}`,
-          name: `${p.first_name || ""} ${p.last_name || ""}`.trim(),
-          score: (p.score !== null && p.score !== undefined && !isNaN(Number(p.score))) ? Number(p.score) : null,
+      const ticker2 = players
+        .filter(p => p.Rank && p.Rank <= 50)
+        .sort((a, b) => a.Rank - b.Rank)
+        .map(p => ({
+          pos: p.Rank ? `T${p.Rank}` : "–",
+          name: p.Name || "Unknown",
+          score: p.TotalScore !== null ? Number(p.TotalScore) : null,
         }));
       setTickerPlayers(ticker2);
 
       const scores = {};
-      leaderboard.forEach((p) => {
-        const fullName = `${p.first_name} ${p.last_name}`;
-        const position = p.position || 99;
-        let birdies=0,pars=0,bogeys=0,doubles=0,eagles=0,double_eagles=0,tripleOrWorse=0,holeInOne=0;
-        let bogeyFreeBonus=0,allRoundsUnder70=0,birdieStreakBonus=0;
-        const completedRoundScores = [];
-        (p.rounds || []).forEach((round) => {
-          if (!round.thru || round.thru === 0) return;
-          eagles += round.eagles || 0;
-          double_eagles += round.double_eagles || 0;
-          birdies += round.birdies || 0;
-          pars += round.pars || 0;
-          bogeys += round.bogeys || 0;
-          doubles += round.double_bogeys || 0;
-          tripleOrWorse += round.other_scores || 0;
-          holeInOne += round.holes_in_one || 0;
-          if (round.thru === 18 && round.strokes > 0) {
-            completedRoundScores.push(round.strokes);
-            if ((round.bogeys||0)===0 && (round.double_bogeys||0)===0 && (round.other_scores||0)===0) bogeyFreeBonus++;
-          }
-        });
-        if (completedRoundScores.length === 4 && completedRoundScores.every(s => s < 70)) allRoundsUnder70 = 1;
-        const fullNameKey = `${p.first_name || ""} ${p.last_name || ""}`.trim();
-        const scData = scorecardMap[p.id] || scorecardMap[fullNameKey] || {};
-        scores[fullName] = { position, birdies, eagles, double_eagles, pars, bogeys, double_bogeys: doubles, triple_bogeys: tripleOrWorse, hole_in_one: holeInOne, birdie_streak_bonus: scData.birdieStreakBonus || 0, bogey_free_bonus: bogeyFreeBonus, all_rounds_under_70_bonus: allRoundsUnder70 };
-      });
-      // Confirmed round 1 streak bonuses (verified from broadcast)
-      // Fleetwood: holes 2-4 | McIlroy: three straight birdies
-      const confirmedStreaks = ['Tommy Fleetwood', 'Rory McIlroy'];
-      confirmedStreaks.forEach((name) => {
-        const key = Object.keys(scores).find(k => normalizeName(k) === normalizeName(name));
-        if (key) scores[key].birdie_streak_bonus = Math.max(scores[key].birdie_streak_bonus || 0, 1);
+      players.forEach((p) => {
+        const name = p.Name;
+        if (!name) return;
+        const position = p.Rank || 99;
+        const eagles = p.Eagles || 0;
+        const doubleEagles = p.DoubleEagles || 0;
+        const birdies = p.Birdies || 0;
+        const pars = p.Pars || 0;
+        const bogeys = p.Bogeys || 0;
+        const doubleBogeys = p.DoubleBogeys || 0;
+        const worseThanDouble = (p.WorseThanDoubleBogey || 0) + (p.TripleBogeys || 0) + (p.WorseThanTripleBogey || 0);
+        const holeInOne = p.HoleInOnes || 0;
+        const birdieStreakBonus = p.StreaksOfThreeBirdiesOrBetter || 0;
+        const bogeyFreeBonus = p.BogeyFreeRounds || 0;
+        const allRoundsUnder70 = p.RoundsUnderSeventy >= 4 ? 1 : 0;
+        const confirmedStreaks = ['Tommy Fleetwood', 'Rory McIlroy'];
+        const streakOverride = confirmedStreaks.some(n => normalizeName(n) === normalizeName(name)) ? 1 : 0;
+        const finalStreakBonus = Math.max(birdieStreakBonus, streakOverride);
+        scores[name] = {
+          position, eagles, double_eagles: doubleEagles, birdies, pars, bogeys,
+          double_bogeys: doubleBogeys, triple_bogeys: worseThanDouble,
+          hole_in_one: holeInOne, birdie_streak_bonus: finalStreakBonus,
+          bogey_free_bonus: bogeyFreeBonus, all_rounds_under_70_bonus: allRoundsUnder70,
+        };
       });
       setLiveData(scores);
 
     } catch(err) {
-      console.error("SR failed, ESPN fallback", err);
-      try {
-        const res = await fetch("https://site.api.espn.com/apis/site/v2/sports/golf/leaderboard?tournamentId=401811941");
-        if (!res.ok) throw new Error("ESPN failed");
-        const data = await res.json();
-        const playersData = data?.events?.[0]?.competitions?.[0]?.competitors || [];
-        const hasStarted = playersData.some((p) => (p.status?.thru||0) > 0);
-        if (!hasStarted) {
-          const ticker = playersData
-            .filter((p) => p.status?.type?.name !== "STATUS_WITHDRAWN")
-            .sort((a,b) => (a.status?.teeTime||"").localeCompare(b.status?.teeTime||""))
-            .map((p) => ({ pos: p.status?.teeTime ? new Date(p.status.teeTime).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",hour12:true,timeZone:"America/New_York"}) : "–", name: p.athlete?.displayName||"Unknown", score: null, isTeeTime: true }));
-          setTickerPlayers(ticker);
-          return;
-        }
-        const ticker2 = playersData
-          .filter((p) => p.status?.type?.name !== "STATUS_WITHDRAWN")
-          .sort((a,b) => (parseInt(a.rank)||99)-(parseInt(b.rank)||99))
-          .slice(0,50)
-          .map((p) => {
-            const stp = p.statistics?.find(s => s.name==="scoreToPar");
-            const score = (stp&&stp.displayValue!=="-"&&stp.displayValue!=="--") ? Number(stp.value) : null;
-            const thru = p.status?.thru===18?"F":p.status?.thru>0?"Thru "+p.status?.thru:null;
-            return { pos: p.rank||"–", name: p.athlete?.displayName||"Unknown", score, thru };
-          });
-        setTickerPlayers(ticker2);
-        const espnScores = {};
-        playersData.forEach((p) => {
-          const pName = p.athlete?.displayName;
-          if (!pName) return;
-          const liveRank = p.status?.position?.displayName;
-          const position = liveRank&&liveRank!=="-"&&liveRank!=="0" ? parseInt(liveRank.replace("T",""))||99 : parseInt((p.rank||"99").replace("T",""))||99;
-          let birdies=0,pars=0,bogeys=0,doubles=0,triples=0,eagles=0,double_eagles=0,holeInOne=0;
-          (p.linescores||[]).forEach((round) => {
-            (round.holes||[]).forEach((h) => {
-              const hScore=h.score??h.value??null;
-              const hPar=h.par??null;
-              if(hScore==null||hPar==null)return;
-              const diff=hScore-hPar;
-              if(diff<=-2)eagles++;
-              else if(diff===-1)birdies++;
-              else if(diff===0)pars++;
-              else if(diff===1)bogeys++;
-              else if(diff===2)doubles++;
-              if(hScore===1&&hPar>=3)holeInOne++;
-            });
-          });
-          espnScores[pName] = { position, birdies, eagles, double_eagles, pars, bogeys, double_bogeys: doubles, triple_bogeys: triples, hole_in_one: holeInOne, birdie_streak_bonus: 0, bogey_free_bonus: 0, all_rounds_under_70_bonus: 0 };
-        });
-        setLiveData(espnScores);
-      } catch(e) { console.error("ESPN also failed", e); }
+      console.error("SportsData failed:", err);
     }
   };
 
