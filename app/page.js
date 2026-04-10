@@ -227,21 +227,25 @@ export default function App() {
         let completedRoundStrokes=[], completedRounds=0;
 
         (p.Rounds || []).forEach((round) => {
-          // Only count completed rounds (have a Score)
           const isComplete = round.Score != null && round.Score > 0;
-          eagles += round.Eagles || 0;
-          doubleEagles += round.DoubleEagles || 0;
-          birdies += round.Birdies || 0;
-          pars += round.Pars || 0;
-          bogeys += round.Bogeys || 0;
-          doubleBogeys += round.DoubleBogeys || 0;
-          worseThanDouble += (round.WorseThanDoubleBogey || 0) + (round.TripleBogeys || 0) + (round.WorseThanTripleBogey || 0);
-          holeInOne += round.HoleInOnes || 0;
-          // Streak: use per-round field
-          if (round.IncludesStreakOfThreeBirdiesOrBetter) birdieStreakBonus++;
-          // Bogey free: completed 18-hole round with zero bogeys or worse
-          const totalHoles = (round.Pars||0)+(round.Birdies||0)+(round.Eagles||0)+(round.DoubleEagles||0)+(round.Bogeys||0)+(round.DoubleBogeys||0)+(round.TripleBogeys||0)+(round.WorseThanDoubleBogey||0); const isComplete18 = isComplete && totalHoles >= 18; const noBogeys = (round.Bogeys||0)===0 && (round.DoubleBogeys||0)===0 && (round.TripleBogeys||0)===0 && (round.WorseThanDoubleBogey||0)===0; if (isComplete18 && noBogeys) bogeyFreeBonus++;
-          if (isComplete) {
+          // Use hole-by-hole data for exact integer counts
+          const holes = (round.Holes || []).filter(h => h.Score != null);
+          holes.forEach((h) => {
+            if (h.DoubleEagle) doubleEagles++;
+            else if (h.Eagle) eagles++;
+            else if (h.Birdie) birdies++;
+            else if (h.IsPar) pars++;
+            else if (h.WorseThanDoubleBogey) worseThanDouble++;
+            else if (h.DoubleBogey) doubleBogeys++;
+            else if (h.Bogey) bogeys++;
+            if (h.HoleInOne) holeInOne++;
+          });
+          // Streak: per-round field, only on completed rounds
+          if (isComplete && round.IncludesStreakOfThreeBirdiesOrBetter) birdieStreakBonus++;
+          // Bogey free: completed 18-hole round with no bogeys or worse
+          if (isComplete && holes.length >= 18) {
+            const noBogeys = !holes.some(h => h.Bogey || h.DoubleBogey || h.WorseThanDoubleBogey);
+            if (noBogeys) bogeyFreeBonus++;
             completedRoundStrokes.push(round.Score);
             completedRounds++;
           }
