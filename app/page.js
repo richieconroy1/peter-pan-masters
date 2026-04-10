@@ -1197,8 +1197,10 @@ export default function App() {
                                   const s = p.stats;
                                   const chips = [];
                                   if (s) {
+                                    if (s.double_eagles > 0) chips.push(<span key="de" className="chip-eagle">🦅🦅×{s.double_eagles}</span>);
                                     if (s.eagles > 0) chips.push(<span key="e" className="chip-eagle">🦅×{s.eagles}</span>);
                                     if (s.birdies > 0) chips.push(<span key="b" className="chip-birdie">🐦×{s.birdies}</span>);
+                                    if (s.pars > 0) chips.push(<span key="p" style={{color:"#8aab93"}}>par×{s.pars}</span>);
                                     if (s.bogeys > 0) chips.push(<span key="bo" className="chip-bogey">bog×{s.bogeys}</span>);
                                     if (s.double_bogeys > 0) chips.push(<span key="db" className="chip-bogey">dbl×{s.double_bogeys}</span>);
                                     if ((s.birdie_streak_bonus || 0) > 0) chips.push(<span key="str" style={{color:"#f7e7a1",fontWeight:700}}>🔥×{s.birdie_streak_bonus}</span>);
