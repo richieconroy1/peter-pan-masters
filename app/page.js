@@ -228,8 +228,9 @@ export default function App() {
 
         (p.Rounds || []).forEach((round) => {
           const isComplete = round.Score != null && round.Score > 0;
-          // Use hole-by-hole data for exact integer counts
+          // Only use hole-by-hole data from played holes
           const holes = (round.Holes || []).filter(h => h.Score != null);
+          if (holes.length === 0) return;
           holes.forEach((h) => {
             if (h.DoubleEagle) doubleEagles++;
             else if (h.Eagle) eagles++;
@@ -240,10 +241,9 @@ export default function App() {
             else if (h.Bogey) bogeys++;
             if (h.HoleInOne) holeInOne++;
           });
-          // Streak: per-round field, only on completed rounds
-          if (isComplete && round.IncludesStreakOfThreeBirdiesOrBetter) birdieStreakBonus++;
-          // Bogey free: completed 18-hole round with no bogeys or worse
+          // Streak and bogey-free only on completed 18-hole rounds
           if (isComplete && holes.length >= 18) {
+            if (round.IncludesStreakOfThreeBirdiesOrBetter) birdieStreakBonus++;
             const noBogeys = !holes.some(h => h.Bogey || h.DoubleBogey || h.WorseThanDoubleBogey);
             if (noBogeys) bogeyFreeBonus++;
             completedRoundStrokes.push(round.Score);
