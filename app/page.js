@@ -269,6 +269,13 @@ export default function App() {
         const confirmedBogeyFree = Object.entries(confirmedBogeyFreeMap).find(([k]) => normalizeName(k).toLowerCase().trim() === bogeyFreeNameNorm)?.[1] || 0;
         const finalBogeyFreeBonus = Math.max(bogeyFreeBonus, confirmedBogeyFree);
 
+        const confirmedBogeyFreeMap = {
+          'shane lowry': 1,
+          'ben griffin': 1,
+        };
+        const bogeyFreeNorm = normalizeName(name).toLowerCase().trim();
+        const confirmedBogeyFree = Object.entries(confirmedBogeyFreeMap).find(([k]) => normalizeName(k).toLowerCase().trim() === bogeyFreeNorm)?.[1] || 0;
+        const finalBogeyFreeBonus = Math.max(bogeyFreeBonus, confirmedBogeyFree);
         const allRoundsUnder70 = completedRounds === 4 && completedRoundStrokes.every(s => s < 70) ? 1 : 0;
 
         scores[name] = {
@@ -1220,9 +1227,11 @@ export default function App() {
                                     if (s.bogey_free_bonus > 0) chips.push(<span key="bf" style={{color:"#f7e7a1",fontWeight:700}}>🛡️</span>);
                                     if (s.position && s.position <= 50) chips.push(<span key="pos" className="chip-pos">T{s.position}</span>);
                                   }
+                                  const missedCut = ['JJ Spaun','J.J. Spaun','Andrew Novak','Akshay Bhatia','Carlos Ortiz','Bubba Watson','Michael Kim','Daniel Berger','Cameron Smith','Viktor Hovland','Gary Woodland','Adam Scott','Keegan Bradley','Justin Thomas','Jordan Spieth','Jacob Bridgeman','Sepp Straka','Brian Campbell','Ryan Gerard','Russell Henley','Harris English','Scottie Scheffler','Dustin Johnson','Patrick Cantlay','Nick Taylor','Matt Fitzpatrick'];
+                                  const didMissCut = missedCut.some(mc => normalizeName(mc) === normalizeName(p.name));
                                   return (
                                     <span key={j} className="scorecard-player-chip">
-                                      {p.name.split(" ").slice(-1)[0]}
+                                      <span style={{textDecoration: didMissCut ? "line-through" : "none", opacity: didMissCut ? 0.5 : 1}}>{p.name.split(" ").slice(-1)[0]}</span>
                                       {chips.length > 0 && <span style={{ marginLeft: "3px" }}>{chips}</span>}
                                       {j < (e.playerStats?.length || 0) - 1 && <span style={{ opacity: 0.3, marginLeft: "2px" }}>·</span>}
                                     </span>
