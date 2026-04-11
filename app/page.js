@@ -297,7 +297,7 @@ export default function App() {
   useEffect(() => {
     if (!players || players.length === 0) return;
     fetchLiveScores();
-    // const interval = setInterval(fetchLiveScores, 180000); // paused until round 3
+    const interval = setInterval(fetchLiveScores, 180000);
     return () => clearInterval(interval);
   }, [players.length]);
 
