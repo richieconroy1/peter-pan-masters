@@ -269,13 +269,6 @@ export default function App() {
         const confirmedBogeyFree = Object.entries(confirmedBogeyFreeMap).find(([k]) => normalizeName(k).toLowerCase().trim() === bogeyFreeNameNorm)?.[1] || 0;
         const finalBogeyFreeBonus = Math.max(bogeyFreeBonus, confirmedBogeyFree);
 
-        const confirmedBogeyFreeMap = {
-          'shane lowry': 1,
-          'ben griffin': 1,
-        };
-        const bogeyFreeNorm = normalizeName(name).toLowerCase().trim();
-        const confirmedBogeyFree = Object.entries(confirmedBogeyFreeMap).find(([k]) => normalizeName(k).toLowerCase().trim() === bogeyFreeNorm)?.[1] || 0;
-        const finalBogeyFreeBonus = Math.max(bogeyFreeBonus, confirmedBogeyFree);
         const allRoundsUnder70 = completedRounds === 4 && completedRoundStrokes.every(s => s < 70) ? 1 : 0;
 
         scores[name] = {
