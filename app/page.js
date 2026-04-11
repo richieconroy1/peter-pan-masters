@@ -202,59 +202,59 @@ export default function App() {
       const json = await res.json();
       if (json.error) throw new Error(json.error);
 
-      const players = json.data?.Players || [];
+      // SportRadar source
+      const players = json.data?.leaderboard || [];
       if (players.length === 0) throw new Error("no data");
 
       const ticker2 = [...players]
-        .filter(p => p.Rank)
-        .sort((a, b) => a.Rank - b.Rank)
+        .filter(p => p.position)
+        .sort((a, b) => a.position - b.position)
         .slice(0, 50)
         .map(p => ({
-          pos: `${p.Rank}`,
-          name: p.Name || "Unknown",
-          score: p.TotalScore !== null && p.TotalScore !== undefined ? Math.round(p.TotalScore) : null,
+          pos: `${p.position}`,
+          name: `${p.first_name} ${p.last_name}`,
+          score: p.score,
         }));
       setTickerPlayers(ticker2);
 
       const scores = {};
       players.forEach((p) => {
-        const name = p.Name;
-        if (!name) return;
-        const position = p.Rank || 99;
+        const name = `${p.first_name} ${p.last_name}`;
+        if (!name.trim()) return;
+        const position = p.position || 99;
         let eagles=0, doubleEagles=0, birdies=0, pars=0, bogeys=0;
         let doubleBogeys=0, worseThanDouble=0, holeInOne=0;
         let birdieStreakBonus=0, bogeyFreeBonus=0;
         let completedRoundStrokes=[], completedRounds=0;
 
-        (p.Rounds || []).forEach((round) => {
-          const isComplete = round.Score != null && round.Score > 0;
-          // Only use hole-by-hole data from played holes
-          const holes = (round.Holes || []).filter(h => h.Score != null);
-          if (holes.length === 0) return;
-          holes.forEach((h) => {
-            if (h.DoubleEagle) doubleEagles++;
-            else if (h.Eagle) eagles++;
-            else if (h.Birdie) birdies++;
-            else if (h.IsPar) pars++;
-            else if (h.WorseThanDoubleBogey) worseThanDouble++;
-            else if (h.DoubleBogey) doubleBogeys++;
-            else if (h.Bogey) bogeys++;
-            if (h.HoleInOne) holeInOne++;
-          });
-          // Streak and bogey-free only on completed 18-hole rounds
-          if (isComplete && holes.length >= 18) {
-            if (round.IncludesStreakOfThreeBirdiesOrBetter) birdieStreakBonus++;
-            const noBogeys = !holes.some(h => h.Bogey || h.DoubleBogey || h.WorseThanDoubleBogey);
+        (p.rounds || []).forEach((round) => {
+          const isComplete = round.thru === 18 && round.strokes > 0;
+          if (!isComplete && round.thru === 0) return;
+          eagles += round.eagles || 0;
+          doubleEagles += round.double_eagles || 0;
+          birdies += round.birdies || 0;
+          pars += round.pars || 0;
+          bogeys += round.bogeys || 0;
+          doubleBogeys += round.double_bogeys || 0;
+          worseThanDouble += round.other_scores || 0;
+          holeInOne += round.holes_in_one || 0;
+          if (isComplete) {
+            if (round.birdies_streak) birdieStreakBonus++;
+            const noBogeys = (round.bogeys||0)===0 && (round.double_bogeys||0)===0 && (round.other_scores||0)===0;
             if (noBogeys) bogeyFreeBonus++;
-            completedRoundStrokes.push(round.Score);
+            completedRoundStrokes.push(round.score);
             completedRounds++;
           }
         });
 
-        // Apply confirmed R1 streak overrides
-        const confirmedStreaks = ['Tommy Fleetwood', 'Rory McIlroy'];
-        const streakOverride = confirmedStreaks.some(n => normalizeName(n) === normalizeName(name)) ? 1 : 0;
-        const finalStreakBonus = Math.max(birdieStreakBonus, streakOverride);
+        // Confirmed streak overrides
+        const confirmedStreakMap = {
+          'rory mcilroy': 2,
+          'tommy fleetwood': 1,
+        };
+        const nameNorm = normalizeName(name).toLowerCase().trim();
+        const confirmedCount = Object.entries(confirmedStreakMap).find(([k]) => normalizeName(k).toLowerCase().trim() === nameNorm)?.[1] || 0;
+        const finalStreakBonus = Math.max(birdieStreakBonus, confirmedCount);
 
         const allRoundsUnder70 = completedRounds === 4 && completedRoundStrokes.every(s => s < 70) ? 1 : 0;
 
