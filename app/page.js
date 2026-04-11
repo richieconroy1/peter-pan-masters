@@ -249,12 +249,25 @@ export default function App() {
 
         // Confirmed streak overrides
         const confirmedStreakMap = {
-          'rory mcilroy': 2,
-          'tommy fleetwood': 1,
+          'rory mcilroy': 2,      // R1 confirmed + R2 holes 2-4 confirmed
+          'tommy fleetwood': 1,   // R1 holes 2-4 confirmed
+          'wyndham clark': 1,     // R2 confirmed
+          'justin rose': 1,       // R2 confirmed
+          'cameron young': 1,     // R2 confirmed
+          'brian harman': 1,      // R2 confirmed
         };
         const nameNorm = normalizeName(name).toLowerCase().trim();
         const confirmedCount = Object.entries(confirmedStreakMap).find(([k]) => normalizeName(k).toLowerCase().trim() === nameNorm)?.[1] || 0;
         const finalStreakBonus = Math.max(birdieStreakBonus, confirmedCount);
+
+        // Confirmed bogey-free round overrides
+        const confirmedBogeyFreeMap = {
+          'shane lowry': 1,   // R2 bogey free confirmed
+          'ben griffin': 1,   // R2 bogey free confirmed
+        };
+        const bogeyFreeNameNorm = normalizeName(name).toLowerCase().trim();
+        const confirmedBogeyFree = Object.entries(confirmedBogeyFreeMap).find(([k]) => normalizeName(k).toLowerCase().trim() === bogeyFreeNameNorm)?.[1] || 0;
+        const finalBogeyFreeBonus = Math.max(bogeyFreeBonus, confirmedBogeyFree);
 
         const allRoundsUnder70 = completedRounds === 4 && completedRoundStrokes.every(s => s < 70) ? 1 : 0;
 
@@ -263,7 +276,7 @@ export default function App() {
           eagles, double_eagles: doubleEagles, birdies, pars, bogeys,
           double_bogeys: doubleBogeys, triple_bogeys: worseThanDouble,
           hole_in_one: holeInOne, birdie_streak_bonus: finalStreakBonus,
-          bogey_free_bonus: bogeyFreeBonus, all_rounds_under_70_bonus: allRoundsUnder70,
+          bogey_free_bonus: finalBogeyFreeBonus, all_rounds_under_70_bonus: allRoundsUnder70,
         };
       });
       setLiveData(scores);
@@ -284,7 +297,7 @@ export default function App() {
   useEffect(() => {
     if (!players || players.length === 0) return;
     fetchLiveScores();
-    const interval = setInterval(fetchLiveScores, 180000);
+    // const interval = setInterval(fetchLiveScores, 180000); // paused until round 3
     return () => clearInterval(interval);
   }, [players.length]);
 
