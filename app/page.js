@@ -203,25 +203,25 @@ export default function App() {
       if (json.error) throw new Error(json.error);
 
       // SportRadar source
-      const players = json.data?.leaderboard || [];
+      const players = json.data?.Players || [];
       if (players.length === 0) throw new Error("no data");
 
       const ticker2 = [...players]
-        .filter(p => p.position)
-        .sort((a, b) => a.position - b.position)
+        .filter(p => p.Rank)
+        .sort((a, b) => a.Rank - b.Rank)
         .slice(0, 50)
         .map(p => ({
-          pos: `${p.position}`,
-          name: `${p.first_name} ${p.last_name}`,
+          pos: `${p.Rank}`,
+          name: p.Name || 'Unknown',
           score: p.score,
         }));
       setTickerPlayers(ticker2);
 
       const scores = {};
       players.forEach((p) => {
-        const name = `${p.first_name} ${p.last_name}`;
+        const name = p.Name;
         if (!name.trim()) return;
-        const position = p.position || 99;
+        const position = p.Rank || 99;
         let eagles=0, doubleEagles=0, birdies=0, pars=0, bogeys=0;
         let doubleBogeys=0, worseThanDouble=0, holeInOne=0;
         let birdieStreakBonus=0, bogeyFreeBonus=0;
