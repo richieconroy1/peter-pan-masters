@@ -227,22 +227,25 @@ export default function App() {
         let birdieStreakBonus=0, bogeyFreeBonus=0;
         let completedRoundStrokes=[], completedRounds=0;
 
-        (p.rounds || []).forEach((round) => {
-          const isComplete = round.thru === 18 && round.strokes > 0;
-          if (!isComplete && round.thru === 0) return;
-          eagles += round.eagles || 0;
-          doubleEagles += round.double_eagles || 0;
-          birdies += round.birdies || 0;
-          pars += round.pars || 0;
-          bogeys += round.bogeys || 0;
-          doubleBogeys += round.double_bogeys || 0;
-          worseThanDouble += round.other_scores || 0;
-          holeInOne += round.holes_in_one || 0;
-          if (isComplete) {
-            if (round.birdies_streak) birdieStreakBonus++;
-            const noBogeys = (round.bogeys||0)===0 && (round.double_bogeys||0)===0 && (round.other_scores||0)===0;
+        (p.Rounds || []).forEach((round) => {
+          const isComplete = round.Score != null && round.Score > 0;
+          const holes = (round.Holes || []).filter(h => h.Score != null);
+          if (holes.length === 0) return;
+          holes.forEach((h) => {
+            if (h.DoubleEagle) doubleEagles++;
+            else if (h.Eagle) eagles++;
+            else if (h.Birdie) birdies++;
+            else if (h.IsPar) pars++;
+            else if (h.WorseThanDoubleBogey) worseThanDouble++;
+            else if (h.DoubleBogey) doubleBogeys++;
+            else if (h.Bogey) bogeys++;
+            if (h.HoleInOne) holeInOne++;
+          });
+          if (isComplete && holes.length >= 18) {
+            if (round.IncludesStreakOfThreeBirdiesOrBetter) birdieStreakBonus++;
+            const noBogeys = !holes.some(h => h.Bogey || h.DoubleBogey || h.WorseThanDoubleBogey);
             if (noBogeys) bogeyFreeBonus++;
-            completedRoundStrokes.push(round.score);
+            completedRoundStrokes.push(round.Score);
             completedRounds++;
           }
         });
