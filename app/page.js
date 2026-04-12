@@ -249,12 +249,19 @@ export default function App() {
 
         // Confirmed streak overrides
         const confirmedStreakMap = {
-          'rory mcilroy': 2,      // R1 confirmed + R2 holes 2-4 confirmed
-          'tommy fleetwood': 1,   // R1 holes 2-4 confirmed
+          'rory mcilroy': 2,      // R1+R2 confirmed
+          'tommy fleetwood': 1,   // R1 confirmed
           'wyndham clark': 1,     // R2 confirmed
           'justin rose': 1,       // R2 confirmed
           'cameron young': 1,     // R2 confirmed
           'brian harman': 1,      // R2 confirmed
+          'jason day': 1,         // R3 confirmed
+          'scottie scheffler': 1, // R3 confirmed
+          'ludvig aberg': 1,      // R3 confirmed
+          'sungjae im': 1,        // R3 confirmed
+          'hideki matsuyama': 1,  // R3 confirmed
+          'keegan bradley': 1,    // R3 confirmed
+          'rasmus hojgaard': 1,   // R3 confirmed
         };
         const nameNorm = normalizeName(name).toLowerCase().trim();
         const confirmedCount = Object.entries(confirmedStreakMap).find(([k]) => normalizeName(k).toLowerCase().trim() === nameNorm)?.[1] || 0;
@@ -262,8 +269,11 @@ export default function App() {
 
         // Confirmed bogey-free round overrides
         const confirmedBogeyFreeMap = {
-          'shane lowry': 1,   // R2 bogey free confirmed
-          'ben griffin': 1,   // R2 bogey free confirmed
+          'shane lowry': 1,       // R2 bogey free confirmed
+          'ben griffin': 1,       // R2 bogey free confirmed
+          'sam burns': 1,         // R3 bogey free confirmed
+          'justin rose': 1,       // R3 bogey free confirmed
+          'scottie scheffler': 1, // R3 bogey free confirmed
         };
         const bogeyFreeNameNorm = normalizeName(name).toLowerCase().trim();
         const confirmedBogeyFree = Object.entries(confirmedBogeyFreeMap).find(([k]) => normalizeName(k).toLowerCase().trim() === bogeyFreeNameNorm)?.[1] || 0;
@@ -1216,6 +1226,7 @@ export default function App() {
                                     if (s.pars > 0) chips.push(<span key="p" style={{color:"#8aab93"}}>par×{s.pars}</span>);
                                     if (s.bogeys > 0) chips.push(<span key="bo" className="chip-bogey">bog×{s.bogeys}</span>);
                                     if (s.double_bogeys > 0) chips.push(<span key="db" className="chip-bogey">dbl×{s.double_bogeys}</span>);
+                                    if ((s.hole_in_one || 0) > 0) chips.push(<span key="hio" style={{color:"#ff6bff",fontWeight:700}}>⛳×{s.hole_in_one}</span>);
                                     if ((s.birdie_streak_bonus || 0) > 0) chips.push(<span key="str" style={{color:"#f7e7a1",fontWeight:700}}>🔥×{s.birdie_streak_bonus}</span>);
                                     if (s.bogey_free_bonus > 0) chips.push(<span key="bf" style={{color:"#f7e7a1",fontWeight:700}}>🛡️</span>);
                                     if (s.position && s.position <= 50) chips.push(<span key="pos" className="chip-pos">T{s.position}</span>);
