@@ -255,16 +255,19 @@ export default function App() {
           'rory mcilroy': 2,      // R1+R2 confirmed
           'tommy fleetwood': 1,   // R1 confirmed
           'wyndham clark': 1,     // R2 confirmed
-          'justin rose': 1,       // R2 confirmed
+          'justin rose': 2,       // R2+R4 confirmed
           'cameron young': 1,     // R2 confirmed
           'brian harman': 1,      // R2 confirmed
           'jason day': 1,         // R3 confirmed
           'scottie scheffler': 1, // R3 confirmed
-          'ludvig aberg': 1,      // R3 confirmed
+          'ludvig aberg': 2,      // R3+R4 confirmed
           'sungjae im': 1,        // R3 confirmed
           'hideki matsuyama': 1,  // R3 confirmed
-          'keegan bradley': 1,    // R3 confirmed
+          'keegan bradley': 2,    // R3+R4 confirmed
           'rasmus hojgaard': 1,   // R3 confirmed
+          'tyrrell hatton': 1,    // R4 confirmed
+          'xander schauffele': 1, // R4 confirmed
+          'jon rahm': 1,          // R4 confirmed
         };
         const nameNorm = normalizeName(name).toLowerCase().trim();
         const confirmedCount = Object.entries(confirmedStreakMap).find(([k]) => normalizeName(k).toLowerCase().trim() === nameNorm)?.[1] || 0;
@@ -276,7 +279,8 @@ export default function App() {
           'ben griffin': 1,       // R2 bogey free confirmed
           'sam burns': 1,         // R3 bogey free confirmed
           'justin rose': 1,       // R3 bogey free confirmed
-          'scottie scheffler': 1, // R3 bogey free confirmed
+          'scottie scheffler': 2, // R3+R4 bogey free confirmed (bogey free weekend)
+          'dustin johnson': 1,    // R4 bogey free confirmed
         };
         const bogeyFreeNameNorm = normalizeName(name).toLowerCase().trim();
         const confirmedBogeyFree = Object.entries(confirmedBogeyFreeMap).find(([k]) => normalizeName(k).toLowerCase().trim() === bogeyFreeNameNorm)?.[1] || 0;
